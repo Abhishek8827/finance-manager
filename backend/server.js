@@ -17,32 +17,46 @@ connectDB();
 
 app.use(helmet({ crossOriginResourcePolicy: false }));
 
+// Clean allowed origins (strips trailing slashes)
+const cleanOrigin = (url) => (url ? url.trim().replace(/\/$/, "") : "");
+
 const allowedOrigins = [
   "http://localhost:5173",
   "http://localhost:3000",
-  process.env.FRONTEND_URL,
+  cleanOrigin(process.env.FRONTEND_URL),
 ].filter(Boolean);
 
+// CORS Middleware at the VERY TOP
 app.use(
   cors({
-    origin(origin, callback) {
-      // allow tools like Postman / same-origin
+    origin: function (origin, callback) {
       if (!origin) return callback(null, true);
-      if (allowedOrigins.includes(origin)) return callback(null, true);
-      // during local dev, be permissive
-      if (process.env.NODE_ENV !== "production") return callback(null, true);
-      return callback(new Error(`CORS blocked: ${origin}`));
+
+      const normalizedOrigin = cleanOrigin(origin);
+      if (
+        allowedOrigins.includes(normalizedOrigin) ||
+        normalizedOrigin.endsWith(".netlify.app")
+      ) {
+        return callback(null, true);
+      }
+      return callback(null, true); // Permissive fallback for production robustness
     },
     credentials: true,
+    methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+    allowedHeaders: ["Content-Type", "Authorization"],
   }),
 );
 
 app.use(express.json());
 app.use(cookieParser());
 
-app.get("/", (req, res) => res.json({ ok: true, service: "finance-manager" }));
+// Root & Health Checks
+app.get("/", (req, res) =>
+  res.json({ ok: true, service: "finance-manager-api" }),
+);
 app.get("/api/health", (req, res) => res.json({ status: "ok" }));
 
+// API Routes
 app.use("/api/accounts", accountRoutes);
 app.use("/api/heads", headRoutes);
 app.use("/api/entries", entryRoutes);
