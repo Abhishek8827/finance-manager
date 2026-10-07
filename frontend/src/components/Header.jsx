@@ -1,6 +1,7 @@
-import { useState, useRef, useEffect } from 'react';
-import { NavLink } from 'react-router-dom';
-import { useApp } from '../context/AppContext';
+import { useState, useRef, useEffect } from "react";
+import { NavLink } from "react-router-dom";
+import { useApp } from "../context/AppContext";
+import { usePWAInstall } from "../hooks/usePWAInstall";
 import {
   ChevronDown,
   Pencil,
@@ -10,22 +11,30 @@ import {
   Settings as SettingsIcon,
   Sun,
   Moon,
-} from 'lucide-react';
+  Download,
+} from "lucide-react";
 
 const NAV_ITEMS = [
-  { path: '/', label: 'Summary', icon: LayoutDashboard },
-  { path: '/entries', label: 'Entries', icon: ListOrdered },
-  { path: '/loans', label: 'Loans', icon: HandCoins },
-  { path: '/settings', label: 'Settings', icon: SettingsIcon },
+  { path: "/", label: "Summary", icon: LayoutDashboard },
+  { path: "/entries", label: "Entries", icon: ListOrdered },
+  { path: "/loans", label: "Loans", icon: HandCoins },
+  { path: "/settings", label: "Settings", icon: SettingsIcon },
 ];
 
 export default function Header() {
-  const { accounts, selectedAccount, switchAccount, renameAccount, createAccount } = useApp();
+  const {
+    accounts,
+    selectedAccount,
+    switchAccount,
+    renameAccount,
+    createAccount,
+  } = useApp();
+  const { isInstallable, installApp } = usePWAInstall();
   const [open, setOpen] = useState(false);
   const [editingId, setEditingId] = useState(null);
-  const [editName, setEditName] = useState('');
+  const [editName, setEditName] = useState("");
   const [adding, setAdding] = useState(false);
-  const [newName, setNewName] = useState('');
+  const [newName, setNewName] = useState("");
   const [isDark, setIsDark] = useState(false);
   const ref = useRef(null);
 
@@ -33,24 +42,24 @@ export default function Header() {
     const handleClickOutside = (e) => {
       if (ref.current && !ref.current.contains(e.target)) setOpen(false);
     };
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
   useEffect(() => {
     const dark =
-      localStorage.theme === 'dark' ||
-      (!('theme' in localStorage) &&
-        window.matchMedia('(prefers-color-scheme: dark)').matches);
+      localStorage.theme === "dark" ||
+      (!("theme" in localStorage) &&
+        window.matchMedia("(prefers-color-scheme: dark)").matches);
     setIsDark(dark);
-    document.documentElement.classList.toggle('dark', dark);
+    document.documentElement.classList.toggle("dark", dark);
   }, []);
 
   const toggleTheme = () => {
     const next = !isDark;
     setIsDark(next);
-    document.documentElement.classList.toggle('dark', next);
-    localStorage.theme = next ? 'dark' : 'light';
+    document.documentElement.classList.toggle("dark", next);
+    localStorage.theme = next ? "dark" : "light";
   };
 
   return (
@@ -58,13 +67,14 @@ export default function Header() {
       <div className="max-w-6xl mx-auto px-4 h-16 flex items-center justify-between gap-2">
         <div className="flex items-center gap-2 min-w-0">
           <div className="w-9 h-9 bg-indigo-600 rounded-xl flex items-center justify-center text-white font-bold text-base shadow-sm shrink-0">
-            FM
+            💸
           </div>
           <h1 className="text-base font-bold text-gray-900 dark:text-white hidden lg:block">
             FinanceManager
           </h1>
         </div>
 
+        {/* Account Switcher */}
         <div className="relative" ref={ref}>
           <button
             onClick={() => setOpen(!open)}
@@ -72,12 +82,14 @@ export default function Header() {
           >
             <span
               className="w-2.5 h-2.5 rounded-full shrink-0"
-              style={{ backgroundColor: selectedAccount?.color || '#6366f1' }}
+              style={{ backgroundColor: selectedAccount?.color || "#6366f1" }}
             />
             <span className="truncate max-w-[100px] sm:max-w-none">
-              {selectedAccount?.name || 'Account'}
+              {selectedAccount?.name || "Account"}
             </span>
-            <ChevronDown className={`w-4 h-4 transition-transform ${open ? 'rotate-180' : ''}`} />
+            <ChevronDown
+              className={`w-4 h-4 transition-transform ${open ? "rotate-180" : ""}`}
+            />
           </button>
 
           {open && (
@@ -95,7 +107,8 @@ export default function Header() {
                       className="flex-1 flex gap-1"
                       onSubmit={(e) => {
                         e.preventDefault();
-                        if (editName.trim()) renameAccount(acc._id, editName.trim());
+                        if (editName.trim())
+                          renameAccount(acc._id, editName.trim());
                         setEditingId(null);
                       }}
                     >
@@ -116,7 +129,9 @@ export default function Header() {
                         }}
                       >
                         {selectedAccount?._id === acc._id && (
-                          <span className="text-indigo-600 dark:text-indigo-400 font-bold mr-1">✓</span>
+                          <span className="text-indigo-600 dark:text-indigo-400 font-bold mr-1">
+                            ✓
+                          </span>
                         )}
                         {acc.name}
                       </button>
@@ -143,7 +158,7 @@ export default function Header() {
                       e.preventDefault();
                       if (newName.trim()) {
                         await createAccount(newName.trim());
-                        setNewName('');
+                        setNewName("");
                         setAdding(false);
                       }
                     }}
@@ -155,7 +170,10 @@ export default function Header() {
                       placeholder="Account Name"
                       autoFocus
                     />
-                    <button type="submit" className="btn-primary text-xs px-2.5">
+                    <button
+                      type="submit"
+                      className="btn-primary text-xs px-2.5"
+                    >
                       Add
                     </button>
                   </form>
@@ -172,6 +190,7 @@ export default function Header() {
           )}
         </div>
 
+        {/* Right Section */}
         <div className="flex items-center gap-1 sm:gap-2">
           <nav className="hidden sm:flex items-center gap-1">
             {NAV_ITEMS.map((item) => (
@@ -181,8 +200,8 @@ export default function Header() {
                 className={({ isActive }) =>
                   `px-3 py-2 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition-colors ${
                     isActive
-                      ? 'bg-indigo-50 dark:bg-indigo-950/50 text-indigo-600 dark:text-indigo-300'
-                      : 'text-gray-600 dark:text-zinc-400 hover:bg-gray-100 dark:hover:bg-zinc-800 hover:text-gray-900 dark:hover:text-zinc-100'
+                      ? "bg-indigo-50 dark:bg-indigo-950/50 text-indigo-600 dark:text-indigo-300"
+                      : "text-gray-600 dark:text-zinc-400 hover:bg-gray-100 dark:hover:bg-zinc-800 hover:text-gray-900 dark:hover:text-zinc-100"
                   }`
                 }
               >
@@ -192,6 +211,19 @@ export default function Header() {
             ))}
           </nav>
 
+          {/* Quick PWA Install Button */}
+          {isInstallable && (
+            <button
+              onClick={installApp}
+              className="p-2 text-indigo-600 dark:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-950/50 rounded-xl transition-colors flex items-center gap-1 text-xs font-semibold"
+              title="Install App"
+            >
+              <Download className="w-4 h-4" />
+              <span className="hidden md:inline">Install</span>
+            </button>
+          )}
+
+          {/* Theme Toggle */}
           <button
             onClick={toggleTheme}
             className="p-2 text-gray-500 dark:text-zinc-400 hover:bg-gray-100 dark:hover:bg-zinc-800 rounded-xl transition-colors"
