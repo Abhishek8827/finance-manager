@@ -17,7 +17,7 @@ connectDB();
 
 app.use(helmet({ crossOriginResourcePolicy: false }));
 
-// Clean allowed origins (strips trailing slashes)
+// Clean allowed origins helper
 const cleanOrigin = (url) => (url ? url.trim().replace(/\/$/, "") : "");
 
 const allowedOrigins = [
@@ -26,12 +26,10 @@ const allowedOrigins = [
   cleanOrigin(process.env.FRONTEND_URL),
 ].filter(Boolean);
 
-// CORS Middleware at the VERY TOP
 app.use(
   cors({
     origin: function (origin, callback) {
       if (!origin) return callback(null, true);
-
       const normalizedOrigin = cleanOrigin(origin);
       if (
         allowedOrigins.includes(normalizedOrigin) ||
@@ -39,7 +37,7 @@ app.use(
       ) {
         return callback(null, true);
       }
-      return callback(null, true); // Permissive fallback for production robustness
+      return callback(null, true); // Fallback for production robustness
     },
     credentials: true,
     methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
@@ -54,14 +52,15 @@ app.use(cookieParser());
 app.get("/", (req, res) =>
   res.json({ ok: true, service: "finance-manager-api" }),
 );
+app.get("/health", (req, res) => res.json({ status: "ok" }));
 app.get("/api/health", (req, res) => res.json({ status: "ok" }));
 
-// API Routes
-app.use("/api/accounts", accountRoutes);
-app.use("/api/heads", headRoutes);
-app.use("/api/entries", entryRoutes);
-app.use("/api/loans", loanRoutes);
-app.use("/api/summary", summaryRoutes);
+// Safety Net: Serve routes on both /api/path AND /path
+app.use(["/api/accounts", "/accounts"], accountRoutes);
+app.use(["/api/heads", "/heads"], headRoutes);
+app.use(["/api/entries", "/entries"], entryRoutes);
+app.use(["/api/loans", "/loans"], loanRoutes);
+app.use(["/api/summary", "/summary"], summaryRoutes);
 
 app.use(errorHandler);
 
