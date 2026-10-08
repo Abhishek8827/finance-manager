@@ -178,12 +178,12 @@ export default function Summary() {
         </div>
       </div>
 
-      {/* STAT CARDS (4 Columns) */}
+      {/* STAT CARDS */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         {/* Income */}
         <div className="card p-4 flex flex-col justify-between">
           <div className="flex justify-between items-start mb-2">
-            <p className="text-xs font-bold text-gray-400 uppercase tracking-wider">
+            <p className="text-xs font-bold text-gray-400 dark:text-zinc-500 uppercase tracking-wider">
               Income
             </p>
             {!isAllTime && (
@@ -191,8 +191,8 @@ export default function Summary() {
                 className={cn(
                   "text-[10px] font-bold px-1.5 py-0.5 rounded-md flex items-center gap-0.5",
                   incDiff >= 0
-                    ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/50 dark:text-emerald-400"
-                    : "bg-red-100 text-red-700 dark:bg-red-900/50 dark:text-red-400",
+                    ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300"
+                    : "bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300",
                 )}
               >
                 {incDiff >= 0 ? (
@@ -204,7 +204,7 @@ export default function Summary() {
               </span>
             )}
           </div>
-          <h3 className="text-xl font-bold text-emerald-600 dark:text-emerald-500 mt-auto">
+          <h3 className="text-xl font-bold text-emerald-600 dark:text-emerald-400 mt-auto">
             {formatPaise(monthTotals.incomePaise)}
           </h3>
         </div>
@@ -212,7 +212,7 @@ export default function Summary() {
         {/* Expense */}
         <div className="card p-4 flex flex-col justify-between">
           <div className="flex justify-between items-start mb-2">
-            <p className="text-xs font-bold text-gray-400 uppercase tracking-wider">
+            <p className="text-xs font-bold text-gray-400 dark:text-zinc-500 uppercase tracking-wider">
               Expense
             </p>
             {!isAllTime && (
@@ -220,8 +220,8 @@ export default function Summary() {
                 className={cn(
                   "text-[10px] font-bold px-1.5 py-0.5 rounded-md flex items-center gap-0.5",
                   expDiff <= 0
-                    ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/50 dark:text-emerald-400"
-                    : "bg-red-100 text-red-700 dark:bg-red-900/50 dark:text-red-400",
+                    ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300"
+                    : "bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300",
                 )}
               >
                 {expDiff <= 0 ? (
@@ -233,46 +233,54 @@ export default function Summary() {
               </span>
             )}
           </div>
-          <h3 className="text-xl font-bold text-red-600 dark:text-red-500 mt-auto">
+          <h3 className="text-xl font-bold text-red-600 dark:text-red-400 mt-auto">
             {formatPaise(monthTotals.expensePaise)}
           </h3>
         </div>
 
-        {/* Settlements */}
-        <div className="card p-4 flex flex-col justify-between">
-          <p className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">
-            Settlements
-          </p>
-          <div className="flex justify-between items-end mt-auto">
-            <div>
-              <p className="text-[10px] font-bold text-gray-400 uppercase">
-                Get
-              </p>
-              <p className="text-base font-bold text-emerald-600 dark:text-emerald-500">
-                {formatPaise(loans.youWillGetPaise)}
-              </p>
-            </div>
-            <div className="text-right">
-              <p className="text-[10px] font-bold text-gray-400 uppercase">
-                Owe
-              </p>
-              <p className="text-base font-bold text-red-600 dark:text-red-500">
-                {formatPaise(loans.youOwePaise)}
-              </p>
-            </div>
-          </div>
-        </div>
-        {/* Net Savings */}
-        <div className="card p-4 bg-gray-50 dark:bg-neutral-800/50 flex flex-col justify-between">
-          <p className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">
+        {/* Net wallet (same as Total Balance for the period math) */}
+        <div className="card p-4 bg-gray-50 dark:bg-zinc-800/40 flex flex-col justify-between">
+          <p className="text-xs font-bold text-gray-500 dark:text-zinc-400 uppercase tracking-wider mb-2">
             Net Balance
           </p>
           <h3 className="text-xl font-bold text-gray-900 dark:text-white mt-auto">
             {formatPaise(monthTotals.netPaise)}
           </h3>
+          <p className="text-[10px] text-gray-400 dark:text-zinc-500 mt-1">
+            Income − Expense
+          </p>
+        </div>
+
+        {/* Settlements — NOT part of wallet */}
+        <div className="card p-4 flex flex-col justify-between border-dashed border-2 border-indigo-200 dark:border-indigo-900/50 bg-indigo-50/40 dark:bg-indigo-950/20">
+          <div className="mb-2">
+            <p className="text-xs font-bold text-indigo-500 dark:text-indigo-300 uppercase tracking-wider">
+              Pending Outside Wallet
+            </p>
+            <p className="text-[10px] text-gray-500 dark:text-zinc-400 mt-0.5">
+              Not included in Cash / Online
+            </p>
+          </div>
+          <div className="flex justify-between items-end mt-auto gap-3">
+            <div>
+              <p className="text-[10px] font-bold text-gray-400 uppercase">
+                You get
+              </p>
+              <p className="text-base font-bold text-emerald-600 dark:text-emerald-400">
+                {formatPaise(loans.youWillGetPaise)}
+              </p>
+            </div>
+            <div className="text-right">
+              <p className="text-[10px] font-bold text-gray-400 uppercase">
+                You owe
+              </p>
+              <p className="text-base font-bold text-red-600 dark:text-red-400">
+                {formatPaise(loans.youOwePaise)}
+              </p>
+            </div>
+          </div>
         </div>
       </div>
-
       {/* CHARTS */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* EXPENSE DONUT */}
