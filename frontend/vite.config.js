@@ -9,9 +9,9 @@ export default defineConfig({
       registerType: "autoUpdate",
       includeAssets: ["favicon.ico"],
       manifest: {
-        name: "Finance Manager",
-        short_name: "Finance",
-        description: "Personal Income & Expense Tracker",
+        name: "FinanceManager",
+        short_name: "FM",
+        description: "Personal Finance & Expense Tracker",
         theme_color: "#4f46e5",
         background_color: "#09090b",
         display: "standalone",
@@ -20,13 +20,13 @@ export default defineConfig({
         scope: "/",
         icons: [
           {
-            src: "/pwa-192.png",
+            src: "https://cdn-icons-png.flaticon.com/512/10149/10149458.png",
             sizes: "192x192",
             type: "image/png",
             purpose: "any maskable",
           },
           {
-            src: "/pwa-512.png",
+            src: "https://cdn-icons-png.flaticon.com/512/10149/10149458.png",
             sizes: "512x512",
             type: "image/png",
             purpose: "any maskable",
@@ -34,35 +34,9 @@ export default defineConfig({
         ],
       },
       workbox: {
-        // Don't cache everything aggressively (saves memory)
-        globPatterns: ["**/*.{js,css,html,ico,svg,png}"],
-        maximumFileSizeToCacheInBytes: 2 * 1024 * 1024, // 2MB max
-        runtimeCaching: [
-          {
-            urlPattern: ({ url }) => url.pathname.startsWith("/api"),
-            handler: "NetworkOnly", // never cache API in SW
-          },
-        ],
-        cleanupOutdatedCaches: true,
-        clientsClaim: true,
-        skipWaiting: true,
-      },
-      devOptions: {
-        enabled: false, // never run SW in local dev (avoids hang)
+        globPatterns: ["**/*.{js,css,html,ico,png,svg}"],
       },
     }),
   ],
   server: { port: 5173 },
-  build: {
-    chunkSizeWarningLimit: 900,
-    rollupOptions: {
-      output: {
-        manualChunks: {
-          react: ["react", "react-dom", "react-router-dom"],
-          charts: ["recharts"],
-          query: ["@tanstack/react-query"],
-        },
-      },
-    },
-  },
 });
