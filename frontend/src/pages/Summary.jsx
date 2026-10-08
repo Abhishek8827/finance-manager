@@ -151,7 +151,7 @@ export default function Summary() {
 
         <div className="relative z-10">
           <p className="text-indigo-200 text-sm font-semibold uppercase tracking-wider mb-1">
-            Total Balance
+            Total Balance.
           </p>
           <h2 className="text-4xl sm:text-5xl font-extrabold mb-6 tracking-tight">
             {formatPaise(allTime.totalPaise)}

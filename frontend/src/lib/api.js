@@ -8,18 +8,20 @@ if (!baseURL.endsWith("/api")) baseURL += "/api";
 const API = axios.create({
   baseURL,
   withCredentials: true,
-  timeout: 12000, // fail faster instead of hanging forever
+  timeout: 45000, // 45s gives Render free tier enough time to wake up!
 });
 
 API.interceptors.response.use(
   (res) => res.data,
   (error) => {
     let message = "Something went wrong";
-    if (error.code === "ECONNABORTED")
-      message = "Server timeout. Please retry.";
-    else if (!error.response)
-      message = "Cannot reach server. It may be waking up.";
-    else message = error.response?.data?.error || error.message;
+    if (error.code === "ECONNABORTED") {
+      message = "Server waking up... Please wait a moment and retry.";
+    } else if (!error.response) {
+      message = "Cannot reach server. Waking up background server...";
+    } else {
+      message = error.response?.data?.error || error.message;
+    }
     const e = new Error(message);
     e.status = error.response?.status;
     return Promise.reject(e);
