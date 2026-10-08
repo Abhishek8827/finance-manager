@@ -66,21 +66,11 @@ export default function Header() {
     <header className="sticky top-0 z-40 glass">
       <div className="max-w-6xl mx-auto px-4 h-16 flex items-center justify-between gap-2">
         <div className="flex items-center gap-2 min-w-0">
-          {/* Logo — indigo circle + white chart icon (always visible) */}
-          <div className="w-9 h-9 bg-indigo-600 rounded-xl flex items-center justify-center shadow-sm shrink-0 text-white">
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              height="20"
-              viewBox="0 -960 960 960"
-              width="20"
-              fill="currentColor"
-              aria-hidden="true"
-            >
-              <path d="M320-414v-306h120v306l-60-56-60 56Zm200 60v-526h120v406L520-354ZM120-216v-344h120v224L120-216Zm0 98 258-258 142 122 224-224h-64v-80h200v200h-80v-64L524-146 382-268 232-118H120Z" />
-            </svg>
+          <div className="w-9 h-9 bg-indigo-600 rounded-xl flex items-center justify-center text-white font-bold text-base shadow-sm shrink-0">
+            💸
           </div>
           <h1 className="text-base font-bold text-gray-900 dark:text-white hidden lg:block">
-            Finance Manager
+            FinanceManager
           </h1>
         </div>
 
@@ -221,6 +211,7 @@ export default function Header() {
             ))}
           </nav>
 
+          {/* Quick PWA Install Button */}
           {isInstallable && (
             <button
               onClick={installApp}
@@ -232,6 +223,7 @@ export default function Header() {
             </button>
           )}
 
+          {/* Theme Toggle */}
           <button
             onClick={toggleTheme}
             className="p-2 text-gray-500 dark:text-zinc-400 hover:bg-gray-100 dark:hover:bg-zinc-800 rounded-xl transition-colors"

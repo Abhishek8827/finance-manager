@@ -8,6 +8,7 @@ import {
 import API from "../lib/api";
 import { toast } from "sonner";
 import { useApp } from "../context/AppContext";
+// import { usePWAInstall } from "../hooks/usePWAInstall";
 import { usePWAInstall } from "../hooks/usePWAInstall";
 
 export default function Settings() {
