@@ -16,35 +16,48 @@ export function AppProvider({ children }) {
   const [selectedAccount, setSelectedAccount] = useState(null);
   const [heads, setHeads] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
 
   const fetchAccounts = useCallback(async () => {
-    const data = await API.get("/accounts");
-    setAccounts(data);
-    const saved = localStorage.getItem("selectedAccountId");
-    const found = data.find((a) => a._id === saved);
-    if (found) setSelectedAccount(found);
-    else if (data[0]) {
-      setSelectedAccount(data[0]);
-      localStorage.setItem("selectedAccountId", data[0]._id);
+    setError(null);
+    try {
+      const data = await API.get("/accounts");
+      if (!data || data.length === 0) {
+        setAccounts([]);
+        setSelectedAccount(null);
+        return;
+      }
+      setAccounts(data);
+      const saved = localStorage.getItem("selectedAccountId");
+      const found = data.find((a) => a._id === saved);
+      if (found) {
+        setSelectedAccount(found);
+      } else if (data[0]) {
+        setSelectedAccount(data[0]);
+        localStorage.setItem("selectedAccountId", data[0]._id);
+      }
+    } catch (e) {
+      setError(e.message || "Failed to connect to server");
+      toast.error(
+        "Connection error: " + (e.message || "Server not responding"),
+      );
+    } finally {
+      setLoading(false);
     }
   }, []);
 
   const fetchHeads = useCallback(async (accountId) => {
     if (!accountId) return;
-    const data = await API.get(`/heads?account=${accountId}`);
-    setHeads(data);
+    try {
+      const data = await API.get(`/heads?account=${accountId}`);
+      setHeads(data || []);
+    } catch (e) {
+      console.error("Failed to fetch heads:", e);
+    }
   }, []);
 
   useEffect(() => {
-    (async () => {
-      try {
-        await fetchAccounts();
-      } catch (e) {
-        toast.error(e.message);
-      } finally {
-        setLoading(false);
-      }
-    })();
+    fetchAccounts();
   }, [fetchAccounts]);
 
   useEffect(() => {
@@ -57,29 +70,41 @@ export function AppProvider({ children }) {
   };
 
   const createAccount = async (name) => {
-    const acc = await API.post("/accounts", { name });
-    setAccounts((p) => [...p, acc]);
-    toast.success("Account created");
-    return acc;
+    try {
+      const acc = await API.post("/accounts", { name });
+      setAccounts((p) => [...p, acc]);
+      toast.success("Account created");
+      return acc;
+    } catch (e) {
+      toast.error(e.message);
+    }
   };
 
   const renameAccount = async (id, name) => {
-    const acc = await API.put(`/accounts/${id}`, { name });
-    setAccounts((p) => p.map((a) => (a._id === id ? acc : a)));
-    if (selectedAccount?._id === id) setSelectedAccount(acc);
-    toast.success("Renamed");
+    try {
+      const acc = await API.put(`/accounts/${id}`, { name });
+      setAccounts((p) => p.map((a) => (a._id === id ? acc : a)));
+      if (selectedAccount?._id === id) setSelectedAccount(acc);
+      toast.success("Renamed");
+    } catch (e) {
+      toast.error(e.message);
+    }
   };
 
   const createHead = async (name, type) => {
     if (!selectedAccount) return null;
-    const h = await API.post("/heads", {
-      account: selectedAccount._id,
-      name,
-      type,
-    });
-    setHeads((p) => [...p, h]);
-    toast.success("Category created");
-    return h;
+    try {
+      const h = await API.post("/heads", {
+        account: selectedAccount._id,
+        name,
+        type,
+      });
+      setHeads((p) => [...p, h]);
+      toast.success("Category created");
+      return h;
+    } catch (e) {
+      toast.error(e.message);
+    }
   };
 
   return (
@@ -94,6 +119,8 @@ export function AppProvider({ children }) {
         createHead,
         fetchHeads,
         loading,
+        error,
+        retry: fetchAccounts,
       }}
     >
       {children}
