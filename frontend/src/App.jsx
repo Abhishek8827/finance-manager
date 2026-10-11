@@ -1,10 +1,12 @@
+import { lazy, Suspense } from "react";
 import { Routes, Route, Navigate } from "react-router-dom";
 import { useApp } from "./context/AppContext";
 import Layout from "./components/Layout";
 import Summary from "./pages/Summary";
-import Entries from "./pages/Entries";
-import Loans from "./pages/Loans";
-import Settings from "./pages/Settings";
+
+const Entries = lazy(() => import("./pages/Entries"));
+const Loans = lazy(() => import("./pages/Loans"));
+const Settings = lazy(() => import("./pages/Settings"));
 
 export default function App() {
   const { loading, selectedAccount } = useApp();
@@ -27,13 +29,21 @@ export default function App() {
 
   return (
     <Layout>
-      <Routes>
-        <Route path="/" element={<Summary />} />
-        <Route path="/entries" element={<Entries />} />
-        <Route path="/loans" element={<Loans />} />
-        <Route path="/settings" element={<Settings />} />
-        <Route path="*" element={<Navigate to="/" replace />} />
-      </Routes>
+      <Suspense
+        fallback={
+          <div className="min-h-[40vh] flex items-center justify-center">
+            <div className="w-8 h-8 border-4 border-indigo-200 border-t-indigo-600 rounded-full animate-spin" />
+          </div>
+        }
+      >
+        <Routes>
+          <Route path="/" element={<Summary />} />
+          <Route path="/entries" element={<Entries />} />
+          <Route path="/loans" element={<Loans />} />
+          <Route path="/settings" element={<Settings />} />
+          <Route path="*" element={<Navigate to="/" replace />} />
+        </Routes>
+      </Suspense>
     </Layout>
   );
 }
