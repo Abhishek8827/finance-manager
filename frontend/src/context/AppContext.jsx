@@ -14,7 +14,6 @@ export const useApp = () => useContext(AppContext);
 export function AppProvider({ children }) {
   const [accounts, setAccounts] = useState([]);
   const [selectedAccount, setSelectedAccount] = useState(null);
-  const [heads, setHeads] = useState([]);
   const [loading, setLoading] = useState(true);
 
   const fetchAccounts = useCallback(async () => {
@@ -29,12 +28,6 @@ export function AppProvider({ children }) {
     }
   }, []);
 
-  const fetchHeads = useCallback(async (accountId) => {
-    if (!accountId) return;
-    const data = await API.get(`/heads?account=${accountId}`);
-    setHeads(data);
-  }, []);
-
   useEffect(() => {
     (async () => {
       try {
@@ -46,10 +39,6 @@ export function AppProvider({ children }) {
       }
     })();
   }, [fetchAccounts]);
-
-  useEffect(() => {
-    if (selectedAccount?._id) fetchHeads(selectedAccount._id);
-  }, [selectedAccount, fetchHeads]);
 
   const switchAccount = (acc) => {
     setSelectedAccount(acc);
@@ -70,18 +59,6 @@ export function AppProvider({ children }) {
     toast.success("Renamed");
   };
 
-  const createHead = async (name, type) => {
-    if (!selectedAccount) return null;
-    const h = await API.post("/heads", {
-      account: selectedAccount._id,
-      name,
-      type,
-    });
-    setHeads((p) => [...p, h]);
-    toast.success("Category created");
-    return h;
-  };
-
   return (
     <AppContext.Provider
       value={{
@@ -90,9 +67,6 @@ export function AppProvider({ children }) {
         switchAccount,
         createAccount,
         renameAccount,
-        heads,
-        createHead,
-        fetchHeads,
         loading,
       }}
     >

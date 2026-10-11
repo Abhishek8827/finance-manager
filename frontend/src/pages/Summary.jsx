@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { format, subMonths, addMonths, isSameMonth, parseISO } from "date-fns";
+import { format, subMonths, addMonths, isSameMonth } from "date-fns";
 import {
   ChevronLeft,
   ChevronRight,
@@ -8,20 +8,10 @@ import {
   TrendingDown,
   Wallet,
 } from "lucide-react";
-import {
-  PieChart,
-  Pie,
-  Cell,
-  Tooltip,
-  ResponsiveContainer,
-  ComposedChart,
-  Bar,
-  Line,
-  XAxis,
-} from "recharts";
 import API from "../lib/api";
 import { formatPaise, cn } from "../lib/utils";
 import { useApp } from "../context/AppContext";
+import DeferredSummaryCharts from "../components/DeferredSummaryCharts";
 
 export default function Summary() {
   const { selectedAccount } = useApp();
@@ -88,28 +78,6 @@ export default function Summary() {
 
   const incDiff = monthTotals.incomePaise - prevTotals.incomePaise;
   const expDiff = monthTotals.expensePaise - prevTotals.expensePaise;
-
-  const CustomTooltip = ({ active, payload }) => {
-    if (active && payload && payload.length) {
-      return (
-        <div className="bg-white dark:bg-neutral-900 p-3 rounded-xl shadow-lg border border-gray-100 dark:border-neutral-800 text-sm">
-          <p className="font-bold text-gray-800 dark:text-gray-100">
-            {payload[0].payload.name || payload[0].payload.month}
-          </p>
-          {payload.map((entry, index) => (
-            <p
-              key={index}
-              style={{ color: entry.color }}
-              className="font-semibold"
-            >
-              {entry.name}: {formatPaise(entry.value)}
-            </p>
-          ))}
-        </div>
-      );
-    }
-    return null;
-  };
 
   return (
     <div className="space-y-6 animate-fade-in pb-10">
@@ -281,108 +249,10 @@ export default function Summary() {
           </div>
         </div>
       </div>
-      {/* CHARTS */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* EXPENSE DONUT */}
-        <div className="card p-5">
-          <h3 className="text-sm font-bold text-gray-800 dark:text-gray-200 mb-4">
-            Expenses by Category
-          </h3>
-          {expenseByHead.length === 0 ? (
-            <p className="text-center text-gray-400 dark:text-gray-500 py-10 text-sm">
-              No expenses recorded
-            </p>
-          ) : (
-            <div className="h-60">
-              <ResponsiveContainer width="100%" height="100%">
-                <PieChart>
-                  <Pie
-                    data={expenseByHead}
-                    dataKey="total"
-                    nameKey="name"
-                    cx="50%"
-                    cy="50%"
-                    innerRadius={60}
-                    outerRadius={80}
-                    paddingAngle={2}
-                  >
-                    {expenseByHead.map((entry, index) => (
-                      <Cell
-                        key={`cell-${index}`}
-                        fill={entry.color || "#6366f1"}
-                      />
-                    ))}
-                  </Pie>
-                  <Tooltip content={<CustomTooltip />} />
-                </PieChart>
-              </ResponsiveContainer>
-            </div>
-          )}
-          <div className="mt-4 flex flex-wrap gap-2 justify-center">
-            {expenseByHead.map((h, i) => (
-              <span
-                key={i}
-                className="text-xs font-medium text-gray-700 dark:text-gray-300 flex items-center gap-1"
-              >
-                <span
-                  className="w-2 h-2 rounded-full"
-                  style={{ backgroundColor: h.color || "#6366f1" }}
-                />{" "}
-                {h.name}
-              </span>
-            ))}
-          </div>
-        </div>
-
-        {/* 6-MONTH TREND */}
-        <div className="card p-5">
-          <h3 className="text-sm font-bold text-gray-800 dark:text-gray-200 mb-4">
-            6-Month Trend
-          </h3>
-          <div className="h-60">
-            <ResponsiveContainer width="100%" height="100%">
-              <ComposedChart data={monthlyTrend}>
-                <XAxis
-                  dataKey="month"
-                  tickFormatter={(val) => {
-                    try {
-                      return format(parseISO(`${val}-01`), "MMM");
-                    } catch {
-                      return val;
-                    }
-                  }}
-                  axisLine={false}
-                  tickLine={false}
-                  tick={{ fontSize: 12, fill: "#9ca3af" }}
-                />
-                <Tooltip content={<CustomTooltip />} />
-                <Bar
-                  dataKey="income"
-                  name="Income"
-                  fill="#10b981"
-                  radius={[4, 4, 0, 0]}
-                  maxBarSize={30}
-                />
-                <Bar
-                  dataKey="expense"
-                  name="Expense"
-                  fill="#ef4444"
-                  radius={[4, 4, 0, 0]}
-                  maxBarSize={30}
-                />
-                <Line
-                  type="monotone"
-                  dataKey="net"
-                  name="Net"
-                  stroke="#6366f1"
-                  strokeWidth={3}
-                  dot={{ r: 4 }}
-                />
-              </ComposedChart>
-            </ResponsiveContainer>
-          </div>
-        </div>
-      </div>
+      <DeferredSummaryCharts
+        expenseByHead={expenseByHead}
+        monthlyTrend={monthlyTrend}
+      />
     </div>
   );
 }

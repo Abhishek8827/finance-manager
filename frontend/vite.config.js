@@ -80,10 +80,20 @@ export default defineConfig({
       workbox: {
         // Cache UI files
         globPatterns: ["**/*.{js,css,html,ico,png,svg,woff,woff2}"],
+        // Charts are loaded on demand; cache them when first requested.
+        globIgnores: ["**/SummaryCharts-*.js"],
         maximumFileSizeToCacheInBytes: 3000000,
         // NEVER cache API requests (avoids data syncing bugs)
         navigateFallbackDenylist: [/^\/api/],
         runtimeCaching: [
+          {
+            urlPattern: ({ url }) => /\/SummaryCharts-[^/]+\.js$/.test(url.pathname),
+            handler: "CacheFirst",
+            options: {
+              cacheName: "summary-charts",
+              expiration: { maxEntries: 1, maxAgeSeconds: 31536000 },
+            },
+          },
           {
             urlPattern: ({ url }) => url.pathname.startsWith("/api"),
             handler: "NetworkOnly",
