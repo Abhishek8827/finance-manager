@@ -11,7 +11,7 @@ A personal finance tracker with a React frontend and an Express API backed by Mo
 
 ## Requirements
 
-- Node.js 18 or newer
+- Node.js 22 or 24 (LTS)
 - npm
 - A MongoDB connection string (local MongoDB or MongoDB Atlas)
 
