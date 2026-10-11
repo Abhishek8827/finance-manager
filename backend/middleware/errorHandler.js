@@ -14,9 +14,13 @@ const errorHandler = (err, req, res, next) => {
   if (err.code === 11000)
     return res.status(409).json({ error: "Duplicate entry." });
 
-  res
-    .status(err.statusCode || 500)
-    .json({ error: err.message || "Internal server error" });
+  const statusCode = err.statusCode || 500;
+  res.status(statusCode).json({
+    error:
+      statusCode >= 500
+        ? "Internal server error"
+        : err.message || "Request failed",
+  });
 };
 
 module.exports = errorHandler;

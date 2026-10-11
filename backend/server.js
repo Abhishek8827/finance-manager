@@ -21,8 +21,9 @@ app.use(helmet({ crossOriginResourcePolicy: false }));
 const cleanOrigin = (url) => (url ? url.trim().replace(/\/$/, "") : "");
 
 const allowedOrigins = [
-  "http://localhost:5173",
-  "http://localhost:3000",
+  ...(process.env.NODE_ENV === "production"
+    ? []
+    : ["http://localhost:5173", "http://localhost:3000"]),
   cleanOrigin(process.env.FRONTEND_URL),
 ].filter(Boolean);
 
@@ -32,12 +33,11 @@ app.use(
       if (!origin) return callback(null, true);
       const normalizedOrigin = cleanOrigin(origin);
       if (
-        allowedOrigins.includes(normalizedOrigin) ||
-        normalizedOrigin.endsWith(".netlify.app")
+        allowedOrigins.includes(normalizedOrigin)
       ) {
         return callback(null, true);
       }
-      return callback(null, true); // Fallback for production robustness
+      return callback(null, false);
     },
     credentials: true,
     methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
