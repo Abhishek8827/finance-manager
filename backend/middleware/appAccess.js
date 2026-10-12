@@ -10,7 +10,7 @@ function getJwtSecret() {
 
 function getAccessPassword() {
   const password = process.env.APP_ACCESS_PASSWORD;
-  return password && password.length >= 12 ? password : null;
+  return password && password.length >= 6 ? password : null;
 }
 
 function authNotConfigured(res) {
