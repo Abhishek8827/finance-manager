@@ -7,6 +7,7 @@ import { todayYMD } from "../lib/utils";
 import { useHeads, useInvalidateData } from "../hooks/useData";
 import { useApp } from "../context/AppContext";
 import { useQueryClient } from "@tanstack/react-query";
+import useDialogAccessibility from "../hooks/useDialogAccessibility";
 
 export default function AddEntryModal({ isOpen, onClose, editEntry = null }) {
   const { selectedAccount } = useApp();
@@ -20,6 +21,7 @@ export default function AddEntryModal({ isOpen, onClose, editEntry = null }) {
 
   const [showNewHead, setShowNewHead] = useState(false);
   const [newHeadName, setNewHeadName] = useState("");
+  const dialogRef = useDialogAccessibility(isOpen, onClose);
 
   const { data: heads = [] } = useHeads();
   const invalidateData = useInvalidateData();
@@ -124,6 +126,11 @@ export default function AddEntryModal({ isOpen, onClose, editEntry = null }) {
       />
 
       <motion.div
+        ref={dialogRef}
+        role="dialog"
+        aria-modal="true"
+        aria-label={`${editEntry ? "Edit" : "New"} ${type} entry`}
+        tabIndex={-1}
         initial={{ y: "100%" }}
         animate={{ y: 0 }}
         exit={{ y: "100%" }}
@@ -135,9 +142,10 @@ export default function AddEntryModal({ isOpen, onClose, editEntry = null }) {
             <button
               type="button"
               onClick={() => setType("expense")}
+              aria-pressed={type === "expense"}
               className={`px-4 py-1.5 rounded-lg text-sm font-semibold transition ${
                 type === "expense"
-                  ? "bg-red-500 text-white shadow-sm"
+                  ? "bg-red-700 text-white shadow-sm"
                   : "text-gray-600 dark:text-zinc-400"
               }`}
             >
@@ -146,9 +154,10 @@ export default function AddEntryModal({ isOpen, onClose, editEntry = null }) {
             <button
               type="button"
               onClick={() => setType("income")}
+              aria-pressed={type === "income"}
               className={`px-4 py-1.5 rounded-lg text-sm font-semibold transition ${
                 type === "income"
-                  ? "bg-emerald-500 text-white shadow-sm"
+                  ? "bg-emerald-700 text-white shadow-sm"
                   : "text-gray-600 dark:text-zinc-400"
               }`}
             >
@@ -156,10 +165,12 @@ export default function AddEntryModal({ isOpen, onClose, editEntry = null }) {
             </button>
           </div>
           <button
+            type="button"
             onClick={onClose}
+            aria-label="Close entry dialog"
             className="p-2 bg-gray-100 dark:bg-zinc-800 rounded-full text-gray-500 dark:text-zinc-400 hover:bg-gray-200 dark:hover:bg-zinc-700"
           >
-            <X className="w-5 h-5" />
+            <X className="w-5 h-5" aria-hidden="true" />
           </button>
         </div>
 
@@ -167,10 +178,12 @@ export default function AddEntryModal({ isOpen, onClose, editEntry = null }) {
           <form id="entry-form" onSubmit={handleSubmit} className="space-y-5">
             {/* Amount */}
             <div className="text-center">
-              <span className="text-gray-400 text-2xl absolute mt-3 ml-4">
+              <span aria-hidden="true" className="text-gray-500 text-2xl absolute mt-3 ml-4">
                 ₹
               </span>
+              <label htmlFor="entry-amount" className="sr-only">Amount in rupees</label>
               <input
+                id="entry-amount"
                 type="number"
                 inputMode="decimal"
                 step="0.01"
@@ -204,10 +217,10 @@ export default function AddEntryModal({ isOpen, onClose, editEntry = null }) {
             )}
 
             {/* Category Picker */}
-            <div>
-              <label className="text-xs font-bold text-gray-400 dark:text-zinc-500 uppercase tracking-wider mb-2 block">
+            <div role="group" aria-labelledby="entry-category-label">
+              <p id="entry-category-label" className="text-xs font-bold text-gray-500 dark:text-zinc-400 uppercase tracking-wider mb-2 block">
                 Category
-              </label>
+              </p>
               {!showNewHead ? (
                 <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide">
                   {filteredHeads.map((h) => (
@@ -215,6 +228,7 @@ export default function AddEntryModal({ isOpen, onClose, editEntry = null }) {
                       type="button"
                       key={h._id}
                       onClick={() => setHeadId(h._id)}
+                      aria-pressed={headId === h._id}
                       className={`flex-shrink-0 px-4 py-2 rounded-xl text-sm font-semibold border-2 transition-all ${
                         headId === h._id
                           ? "border-indigo-500 bg-indigo-50 dark:bg-indigo-950/40 text-indigo-700 dark:text-indigo-300"
@@ -236,6 +250,7 @@ export default function AddEntryModal({ isOpen, onClose, editEntry = null }) {
                 <div className="flex gap-2">
                   <input
                     type="text"
+                    aria-label="New category name"
                     value={newHeadName}
                     onChange={(e) => setNewHeadName(e.target.value)}
                     placeholder="Category Name"
@@ -252,9 +267,10 @@ export default function AddEntryModal({ isOpen, onClose, editEntry = null }) {
                   <button
                     type="button"
                     onClick={() => setShowNewHead(false)}
+                    aria-label="Cancel new category"
                     className="btn-secondary px-3"
                   >
-                    <X className="w-4 h-4" />
+                    <X className="w-4 h-4" aria-hidden="true" />
                   </button>
                 </div>
               )}
@@ -263,16 +279,17 @@ export default function AddEntryModal({ isOpen, onClose, editEntry = null }) {
             {/* Mode & Date */}
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <label className="text-xs font-bold text-gray-400 dark:text-zinc-500 uppercase tracking-wider mb-2 block">
+                <p id="entry-payment-mode-label" className="text-xs font-bold text-gray-500 dark:text-zinc-400 uppercase tracking-wider mb-2 block">
                   Payment Mode
-                </label>
-                <div className="flex bg-gray-100 dark:bg-zinc-800 p-1 rounded-xl">
+                </p>
+                <div role="group" aria-labelledby="entry-payment-mode-label" className="flex bg-gray-100 dark:bg-zinc-800 p-1 rounded-xl">
                   <button
                     type="button"
                     onClick={() => setMode("cash")}
+                    aria-pressed={mode === "cash"}
                     className={`flex-1 py-1.5 rounded-lg text-xs font-bold transition ${
                       mode === "cash"
-                        ? "bg-amber-400 text-white shadow"
+                        ? "bg-amber-400 text-gray-900 shadow"
                         : "text-gray-500 dark:text-zinc-400"
                     }`}
                   >
@@ -281,9 +298,10 @@ export default function AddEntryModal({ isOpen, onClose, editEntry = null }) {
                   <button
                     type="button"
                     onClick={() => setMode("online")}
+                    aria-pressed={mode === "online"}
                     className={`flex-1 py-1.5 rounded-lg text-xs font-bold transition ${
                       mode === "online"
-                        ? "bg-blue-500 text-white shadow"
+                        ? "bg-blue-700 text-white shadow"
                         : "text-gray-500 dark:text-zinc-400"
                     }`}
                   >
@@ -293,11 +311,12 @@ export default function AddEntryModal({ isOpen, onClose, editEntry = null }) {
               </div>
 
               <div>
-                <label className="text-xs font-bold text-gray-400 dark:text-zinc-500 uppercase tracking-wider mb-2 block">
+                <label htmlFor="entry-date" className="text-xs font-bold text-gray-500 dark:text-zinc-400 uppercase tracking-wider mb-2 block">
                   Date
                 </label>
                 <input
                   type="date"
+                  id="entry-date"
                   value={date}
                   onChange={(e) => setDate(e.target.value)}
                   className="input w-full"
@@ -308,11 +327,12 @@ export default function AddEntryModal({ isOpen, onClose, editEntry = null }) {
 
             {/* Note */}
             <div>
-              <label className="text-xs font-bold text-gray-400 dark:text-zinc-500 uppercase tracking-wider mb-2 block">
+              <label htmlFor="entry-note" className="text-xs font-bold text-gray-500 dark:text-zinc-400 uppercase tracking-wider mb-2 block">
                 Note (Optional)
               </label>
               <input
                 type="text"
+                id="entry-note"
                 value={summary}
                 onChange={(e) => setSummary(e.target.value)}
                 placeholder="What was this for?"

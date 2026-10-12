@@ -6,6 +6,7 @@ import API from "../lib/api";
 import { todayYMD } from "../lib/utils";
 import { useAccounts, useInvalidateData } from "../hooks/useData";
 import { useApp } from "../context/AppContext";
+import useDialogAccessibility from "../hooks/useDialogAccessibility";
 
 export default function TransferModal({ isOpen, onClose, editEntry = null }) {
   const { selectedAccount } = useApp();
@@ -20,6 +21,7 @@ export default function TransferModal({ isOpen, onClose, editEntry = null }) {
   const [date, setDate] = useState(todayYMD());
   const [summary, setSummary] = useState("");
   const [loading, setLoading] = useState(false);
+  const dialogRef = useDialogAccessibility(isOpen, onClose);
 
   useEffect(() => {
     if (isOpen && selectedAccount?._id) {
@@ -105,6 +107,11 @@ export default function TransferModal({ isOpen, onClose, editEntry = null }) {
         onClick={onClose}
       />
       <motion.div
+        ref={dialogRef}
+        role="dialog"
+        aria-modal="true"
+        aria-label={editEntry ? "Edit transfer" : "Transfer"}
+        tabIndex={-1}
         initial={{ y: "100%" }}
         animate={{ y: 0 }}
         exit={{ y: "100%" }}
@@ -115,9 +122,10 @@ export default function TransferModal({ isOpen, onClose, editEntry = null }) {
             <button
               type="button"
               onClick={() => setType("self")}
+              aria-pressed={type === "self"}
               className={`px-4 py-1.5 rounded-lg text-sm font-semibold transition ${
                 type === "self"
-                  ? "bg-blue-500 text-white shadow-sm"
+                  ? "bg-blue-700 text-white shadow-sm"
                   : "text-gray-600 dark:text-zinc-400"
               }`}
             >
@@ -126,9 +134,10 @@ export default function TransferModal({ isOpen, onClose, editEntry = null }) {
             <button
               type="button"
               onClick={() => setType("account")}
+              aria-pressed={type === "account"}
               className={`px-4 py-1.5 rounded-lg text-sm font-semibold transition ${
                 type === "account"
-                  ? "bg-blue-500 text-white shadow-sm"
+                  ? "bg-blue-700 text-white shadow-sm"
                   : "text-gray-600 dark:text-zinc-400"
               }`}
             >
@@ -136,10 +145,12 @@ export default function TransferModal({ isOpen, onClose, editEntry = null }) {
             </button>
           </div>
           <button
+            type="button"
             onClick={onClose}
+            aria-label="Close transfer dialog"
             className="p-2 bg-gray-100 dark:bg-zinc-800 rounded-full text-gray-500 dark:text-zinc-400 hover:bg-gray-200 dark:hover:bg-zinc-700"
           >
-            <X className="w-5 h-5" />
+            <X className="w-5 h-5" aria-hidden="true" />
           </button>
         </div>
 
@@ -150,10 +161,12 @@ export default function TransferModal({ isOpen, onClose, editEntry = null }) {
             className="space-y-6"
           >
             <div className="text-center">
-              <span className="text-gray-400 text-2xl absolute mt-3 ml-4">
+              <label htmlFor="transfer-amount" className="sr-only">Amount in rupees</label>
+              <span aria-hidden="true" className="text-gray-500 text-2xl absolute mt-3 ml-4">
                 ₹
               </span>
               <input
+                id="transfer-amount"
                 type="number"
                 inputMode="decimal"
                 step="0.01"
@@ -168,16 +181,17 @@ export default function TransferModal({ isOpen, onClose, editEntry = null }) {
 
             <div className="bg-gray-50 dark:bg-zinc-800/40 p-4 rounded-2xl border border-gray-100 dark:border-zinc-800 space-y-4 relative">
               <div>
-                <p className="text-[10px] font-bold text-gray-400 dark:text-zinc-500 uppercase tracking-wider mb-2">
+                <p className="text-[10px] font-bold text-gray-500 dark:text-zinc-400 uppercase tracking-wider mb-2">
                   From ({selectedAccount?.name})
                 </p>
-                <div className="flex bg-white dark:bg-zinc-800 p-1 rounded-xl border border-gray-200 dark:border-zinc-700 shadow-sm">
+                <div role="group" aria-label={`Source payment mode for ${selectedAccount?.name || "selected account"}`} className="flex bg-white dark:bg-zinc-800 p-1 rounded-xl border border-gray-200 dark:border-zinc-700 shadow-sm">
                   <button
                     type="button"
                     onClick={() => setFromMode("cash")}
+                    aria-pressed={fromMode === "cash"}
                     className={`flex-1 py-2 rounded-lg text-xs font-bold transition ${
                       fromMode === "cash"
-                        ? "bg-amber-400 text-white shadow"
+                        ? "bg-amber-400 text-gray-900 shadow"
                         : "text-gray-500 dark:text-zinc-400"
                     }`}
                   >
@@ -186,9 +200,10 @@ export default function TransferModal({ isOpen, onClose, editEntry = null }) {
                   <button
                     type="button"
                     onClick={() => setFromMode("online")}
+                    aria-pressed={fromMode === "online"}
                     className={`flex-1 py-2 rounded-lg text-xs font-bold transition ${
                       fromMode === "online"
-                        ? "bg-blue-500 text-white shadow"
+                        ? "bg-blue-700 text-white shadow"
                         : "text-gray-500 dark:text-zinc-400"
                     }`}
                   >
@@ -198,35 +213,42 @@ export default function TransferModal({ isOpen, onClose, editEntry = null }) {
               </div>
 
               <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-8 h-8 bg-white dark:bg-zinc-800 border border-gray-200 dark:border-zinc-700 rounded-full flex items-center justify-center shadow-sm z-10">
-                <ArrowDown className="w-4 h-4 text-gray-400" />
+                <ArrowDown aria-hidden="true" className="w-4 h-4 text-gray-500" />
               </div>
 
               <div>
-                <p className="text-[10px] font-bold text-gray-400 dark:text-zinc-500 uppercase tracking-wider mb-2">
+                <p className="text-[10px] font-bold text-gray-500 dark:text-zinc-400 uppercase tracking-wider mb-2">
                   To {type === "self" ? selectedAccount?.name : "Account"}
                 </p>
                 {type === "account" && (
-                  <select
-                    value={toAccount}
-                    onChange={(e) => setToAccount(e.target.value)}
-                    className="input mb-2"
-                  >
-                    {accounts
-                      .filter((a) => a._id !== selectedAccount?._id)
-                      .map((a) => (
-                        <option key={a._id} value={a._id}>
-                          {a.name}
-                        </option>
-                      ))}
-                  </select>
+                  <>
+                    <label htmlFor="transfer-account" className="sr-only">
+                      Destination account
+                    </label>
+                    <select
+                      id="transfer-account"
+                      value={toAccount}
+                      onChange={(e) => setToAccount(e.target.value)}
+                      className="input mb-2"
+                    >
+                      {accounts
+                        .filter((a) => a._id !== selectedAccount?._id)
+                        .map((a) => (
+                          <option key={a._id} value={a._id}>
+                            {a.name}
+                          </option>
+                        ))}
+                    </select>
+                  </>
                 )}
-                <div className="flex bg-white dark:bg-zinc-800 p-1 rounded-xl border border-gray-200 dark:border-zinc-700 shadow-sm">
+                <div role="group" aria-label="Destination payment mode" className="flex bg-white dark:bg-zinc-800 p-1 rounded-xl border border-gray-200 dark:border-zinc-700 shadow-sm">
                   <button
                     type="button"
                     onClick={() => setToMode("cash")}
+                    aria-pressed={toMode === "cash"}
                     className={`flex-1 py-2 rounded-lg text-xs font-bold transition ${
                       toMode === "cash"
-                        ? "bg-amber-400 text-white shadow"
+                        ? "bg-amber-400 text-gray-900 shadow"
                         : "text-gray-500 dark:text-zinc-400"
                     }`}
                   >
@@ -235,9 +257,10 @@ export default function TransferModal({ isOpen, onClose, editEntry = null }) {
                   <button
                     type="button"
                     onClick={() => setToMode("online")}
+                    aria-pressed={toMode === "online"}
                     className={`flex-1 py-2 rounded-lg text-xs font-bold transition ${
                       toMode === "online"
-                        ? "bg-blue-500 text-white shadow"
+                        ? "bg-blue-700 text-white shadow"
                         : "text-gray-500 dark:text-zinc-400"
                     }`}
                   >
@@ -249,11 +272,12 @@ export default function TransferModal({ isOpen, onClose, editEntry = null }) {
 
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <label className="text-xs font-bold text-gray-400 dark:text-zinc-500 uppercase tracking-wider mb-2 block">
+                <label htmlFor="transfer-date" className="text-xs font-bold text-gray-500 dark:text-zinc-400 uppercase tracking-wider mb-2 block">
                   Date
                 </label>
                 <input
                   type="date"
+                  id="transfer-date"
                   value={date}
                   onChange={(e) => setDate(e.target.value)}
                   className="input w-full"
@@ -261,11 +285,12 @@ export default function TransferModal({ isOpen, onClose, editEntry = null }) {
                 />
               </div>
               <div>
-                <label className="text-xs font-bold text-gray-400 dark:text-zinc-500 uppercase tracking-wider mb-2 block">
+                <label htmlFor="transfer-note" className="text-xs font-bold text-gray-500 dark:text-zinc-400 uppercase tracking-wider mb-2 block">
                   Note
                 </label>
                 <input
                   type="text"
+                  id="transfer-note"
                   value={summary}
                   onChange={(e) => setSummary(e.target.value)}
                   placeholder="Optional"

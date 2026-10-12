@@ -3,13 +3,16 @@ import { Routes, Route, Navigate } from "react-router-dom";
 import { useApp } from "./context/AppContext";
 import Layout from "./components/Layout";
 import Summary from "./pages/Summary";
+import AccessGate from "./components/AccessGate";
 
 const Entries = lazy(() => import("./pages/Entries"));
 const Loans = lazy(() => import("./pages/Loans"));
 const Settings = lazy(() => import("./pages/Settings"));
 
 export default function App() {
-  const { loading, selectedAccount } = useApp();
+  const { authenticated, loading, selectedAccount } = useApp();
+
+  if (!authenticated) return <AccessGate />;
 
   if (loading) {
     return (

@@ -13,13 +13,27 @@ if (!baseURL.endsWith("/api")) {
 
 const API = axios.create({
   baseURL,
-  withCredentials: true,
   timeout: 20000,
 });
+
+export function setAccessToken(token) {
+  if (token) {
+    API.defaults.headers.common.Authorization = `Bearer ${token}`;
+  } else {
+    delete API.defaults.headers.common.Authorization;
+  }
+}
 
 API.interceptors.response.use(
   (response) => response.data,
   (error) => {
+    if (
+      error.response?.status === 401 &&
+      !error.config?.url?.includes("/auth/login")
+    ) {
+      setAccessToken(null);
+      window.dispatchEvent(new Event("finance-manager:auth-expired"));
+    }
     const message =
       error.response?.data?.error || error.message || "Something went wrong";
     const customError = new Error(message);

@@ -26,6 +26,11 @@
   }
 
   * { -webkit-tap-highlight-color: transparent; }
+
+  :focus-visible {
+    outline: 2px solid #4f46e5;
+    outline-offset: 2px;
+  }
 }
 
 @layer components {
@@ -37,7 +42,7 @@
     @apply w-full px-3 py-2.5 rounded-xl border border-gray-200 dark:border-zinc-700
            bg-white dark:bg-zinc-900 text-gray-900 dark:text-zinc-100 text-sm outline-none
            focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition
-           placeholder:text-gray-400 dark:placeholder:text-zinc-500;
+           placeholder:text-gray-500 dark:placeholder:text-zinc-400;
   }
 
   .btn {

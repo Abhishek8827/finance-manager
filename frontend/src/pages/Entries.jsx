@@ -89,6 +89,9 @@ export default function Entries() {
           </h2>
           <button
             onClick={() => setShowFilters(!showFilters)}
+            aria-label={showFilters ? "Hide entry filters" : "Show entry filters"}
+            aria-expanded={showFilters}
+            aria-controls="entry-filters"
             className={cn(
               "p-2.5 rounded-xl transition border",
               showFilters || search
@@ -105,6 +108,7 @@ export default function Entries() {
             <button
               key={t}
               onClick={() => setTab(t)}
+              aria-pressed={tab === t}
               className={cn(
                 "flex-1 py-1.5 text-xs font-bold uppercase tracking-wider rounded-lg transition-all",
                 tab === t
@@ -118,9 +122,10 @@ export default function Entries() {
         </div>
 
         {showFilters && (
-          <div className="mt-3">
+          <div id="entry-filters" className="mt-3">
             <input
               type="text"
+              aria-label="Search entries"
               placeholder="Search entries..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
@@ -142,7 +147,7 @@ export default function Entries() {
         <div className="space-y-6">
           {Object.entries(grouped).map(([dateStr, items]) => (
             <div key={dateStr} className="space-y-2">
-              <h3 className="text-xs font-bold text-gray-400 dark:text-zinc-500 uppercase tracking-widest pl-2">
+              <h3 className="text-xs font-bold text-gray-500 dark:text-zinc-400 uppercase tracking-widest pl-2">
                 {friendlyDate(dateStr)}{" "}
                 <span className="font-normal lowercase ml-1">
                   ({format(parseISO(dateStr), "dd MMM yyyy")})
@@ -227,12 +232,14 @@ export default function Entries() {
                         <div className="flex items-center gap-1 mt-1 opacity-100 sm:opacity-0 group-hover:opacity-100 transition-opacity">
                           <button
                             onClick={() => handleEdit(entry)}
+                            aria-label={`Edit ${title}`}
                             className="p-1.5 text-gray-400 hover:text-indigo-600 dark:hover:text-indigo-400 bg-gray-100 dark:bg-zinc-800 hover:bg-indigo-50 dark:hover:bg-indigo-900/30 rounded-md"
                           >
                             <Edit2 className="w-3.5 h-3.5" />
                           </button>
                           <button
                             onClick={() => deleteMutation.mutate(entry._id)}
+                            aria-label={`Delete ${title}`}
                             className="p-1.5 text-gray-400 hover:text-red-600 dark:hover:text-red-400 bg-gray-100 dark:bg-zinc-800 hover:bg-red-50 dark:hover:bg-red-900/30 rounded-md"
                           >
                             <Trash2 className="w-3.5 h-3.5" />

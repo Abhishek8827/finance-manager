@@ -185,6 +185,7 @@ export default function Loans() {
             <button
               type="button"
               onClick={closeForm}
+              aria-label="Close loan form"
               className="p-1.5 rounded-lg hover:bg-black/5 dark:hover:bg-white/10"
             >
               <X className="w-4 h-4 text-gray-500" />
@@ -195,10 +196,11 @@ export default function Loans() {
             <button
               type="button"
               onClick={() => setForm({ ...form, direction: "lent" })}
+              aria-pressed={form.direction === "lent"}
               className={cn(
                 "flex-1 py-1.5 rounded-lg text-xs font-bold transition",
                 form.direction === "lent"
-                  ? "bg-emerald-500 text-white"
+                  ? "bg-emerald-700 text-white"
                   : "text-gray-500 dark:text-zinc-400",
               )}
             >
@@ -207,10 +209,11 @@ export default function Loans() {
             <button
               type="button"
               onClick={() => setForm({ ...form, direction: "borrowed" })}
+              aria-pressed={form.direction === "borrowed"}
               className={cn(
                 "flex-1 py-1.5 rounded-lg text-xs font-bold transition",
                 form.direction === "borrowed"
-                  ? "bg-red-500 text-white"
+                  ? "bg-red-700 text-white"
                   : "text-gray-500 dark:text-zinc-400",
               )}
             >
@@ -220,11 +223,12 @@ export default function Loans() {
 
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="text-[10px] font-bold text-gray-400 uppercase">
+              <label htmlFor="loan-person" className="text-[10px] font-bold text-gray-500 uppercase">
                 Person *
               </label>
               <input
                 type="text"
+                id="loan-person"
                 value={form.person}
                 onChange={(e) => setForm({ ...form, person: e.target.value })}
                 className="input py-2"
@@ -233,11 +237,12 @@ export default function Loans() {
               />
             </div>
             <div>
-              <label className="text-[10px] font-bold text-gray-400 uppercase">
+              <label htmlFor="loan-amount" className="text-[10px] font-bold text-gray-500 uppercase">
                 Amount *
               </label>
               <input
                 type="number"
+                id="loan-amount"
                 step="0.01"
                 min="0.01"
                 value={form.amount}
@@ -250,17 +255,18 @@ export default function Loans() {
 
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="text-[10px] font-bold text-gray-400 uppercase">
+              <span id="loan-mode-label" className="block text-[10px] font-bold text-gray-500 uppercase">
                 Mode
-              </label>
-              <div className="flex bg-white dark:bg-zinc-900 p-1 rounded-xl border border-gray-200 dark:border-zinc-700">
+              </span>
+              <div role="group" aria-labelledby="loan-mode-label" className="flex bg-white dark:bg-zinc-900 p-1 rounded-xl border border-gray-200 dark:border-zinc-700">
                 <button
                   type="button"
                   onClick={() => setForm({ ...form, mode: "cash" })}
+                  aria-pressed={form.mode === "cash"}
                   className={cn(
                     "flex-1 py-1 rounded-lg text-xs font-bold transition",
                     form.mode === "cash"
-                      ? "bg-amber-400 text-white"
+                      ? "bg-amber-400 text-gray-900"
                       : "text-gray-500",
                   )}
                 >
@@ -269,10 +275,11 @@ export default function Loans() {
                 <button
                   type="button"
                   onClick={() => setForm({ ...form, mode: "online" })}
+                  aria-pressed={form.mode === "online"}
                   className={cn(
                     "flex-1 py-1 rounded-lg text-xs font-bold transition",
                     form.mode === "online"
-                      ? "bg-blue-500 text-white"
+                      ? "bg-blue-700 text-white"
                       : "text-gray-500",
                   )}
                 >
@@ -281,11 +288,12 @@ export default function Loans() {
               </div>
             </div>
             <div>
-              <label className="text-[10px] font-bold text-gray-400 uppercase">
+              <label htmlFor="loan-date" className="text-[10px] font-bold text-gray-500 uppercase">
                 Date
               </label>
               <input
                 type="date"
+                id="loan-date"
                 value={form.date}
                 onChange={(e) => setForm({ ...form, date: e.target.value })}
                 className="input py-1.5"
@@ -295,8 +303,10 @@ export default function Loans() {
           </div>
 
           <div className="flex gap-3">
+            <label htmlFor="loan-note" className="sr-only">Optional note</label>
             <input
               type="text"
+              id="loan-note"
               placeholder="Optional note"
               value={form.note}
               onChange={(e) => setForm({ ...form, note: e.target.value })}
@@ -315,12 +325,12 @@ export default function Loans() {
 
       {/* PENDING */}
       <div>
-        <h3 className="text-xs font-bold text-gray-400 dark:text-zinc-500 uppercase tracking-widest mb-3 pl-2">
+        <h3 className="text-xs font-bold text-gray-500 dark:text-zinc-400 uppercase tracking-widest mb-3 pl-2">
           Pending ({pending.length})
         </h3>
         <div className="card divide-y divide-gray-100 dark:divide-zinc-800">
           {pending.length === 0 && (
-            <div className="p-6 text-center text-gray-400 dark:text-zinc-500 text-sm">
+            <div className="p-6 text-center text-gray-500 dark:text-zinc-400 text-sm">
               No pending loans
             </div>
           )}
@@ -348,11 +358,11 @@ export default function Loans() {
                       : "You borrowed"}
                   </p>
                   {loan.note && (
-                    <p className="text-[11px] text-gray-400 dark:text-zinc-500 truncate">
+                    <p className="text-[11px] text-gray-500 dark:text-zinc-400 truncate">
                       {loan.note}
                     </p>
                   )}
-                  <p className="text-[10px] text-gray-400 dark:text-zinc-500 mt-0.5">
+                  <p className="text-[10px] text-gray-500 dark:text-zinc-400 mt-0.5">
                     {friendlyDate(loan.date)}
                   </p>
                 </div>
@@ -373,6 +383,7 @@ export default function Loans() {
                 <div className="flex items-center gap-1">
                   <button
                     onClick={() => openEdit(loan)}
+                    aria-label={`Edit loan with ${loan.person}`}
                     className="p-1.5 rounded-md bg-gray-100 dark:bg-zinc-800 text-gray-500 hover:text-indigo-600 dark:hover:text-indigo-400"
                     title="Edit"
                   >
@@ -380,6 +391,7 @@ export default function Loans() {
                   </button>
                   <button
                     onClick={() => handleDelete(loan)}
+                    aria-label={`Delete loan with ${loan.person}`}
                     className="p-1.5 rounded-md bg-gray-100 dark:bg-zinc-800 text-gray-500 hover:text-red-600 dark:hover:text-red-400"
                     title="Delete"
                   >
@@ -401,7 +413,7 @@ export default function Loans() {
       {/* SETTLED */}
       {returned.length > 0 && (
         <div className="opacity-80">
-          <h3 className="text-xs font-bold text-gray-400 dark:text-zinc-500 uppercase tracking-widest mb-3 pl-2">
+          <h3 className="text-xs font-bold text-gray-500 dark:text-zinc-400 uppercase tracking-widest mb-3 pl-2">
             Settled ({returned.length})
           </h3>
           <div className="card divide-y divide-gray-100 dark:divide-zinc-800">
@@ -418,17 +430,18 @@ export default function Loans() {
                     <p className="font-bold text-gray-600 dark:text-zinc-400 text-sm line-through truncate">
                       {loan.person}
                     </p>
-                    <p className="text-[10px] text-gray-400 dark:text-zinc-500">
+                    <p className="text-[10px] text-gray-500 dark:text-zinc-400">
                       Settled on {friendlyDate(loan.settledOn)}
                     </p>
                   </div>
                 </div>
                 <div className="flex items-center gap-2 shrink-0">
-                  <span className="font-bold text-sm text-gray-400 dark:text-zinc-500">
+                  <span className="font-bold text-sm text-gray-500 dark:text-zinc-400">
                     {formatPaise(loan.amountPaise)}
                   </span>
                   <button
                     onClick={() => handleDelete(loan)}
+                    aria-label={`Delete settled loan with ${loan.person}`}
                     className="p-1.5 rounded-md bg-gray-100 dark:bg-zinc-800 text-gray-500 hover:text-red-600"
                     title="Delete settled loan"
                   >

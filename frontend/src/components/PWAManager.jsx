@@ -109,6 +109,7 @@ export default function PWAManager() {
           </div>
           <button
             onClick={() => toast.dismiss(t)}
+            aria-label="Dismiss install prompt"
             className="text-gray-400 hover:text-gray-600"
           >
             <X className="w-4 h-4" />

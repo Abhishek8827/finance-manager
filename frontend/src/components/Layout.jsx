@@ -1,16 +1,15 @@
-import { useState } from "react";
+import { lazy, Suspense, useState } from "react";
 import { NavLink } from "react-router-dom";
 import Header from "./Header";
 import FloatingButton from "./FloatingButton";
-import AddEntryModal from "./AddEntryModal";
-import TransferModal from "./TransferModal";
 import {
   LayoutDashboard,
   ListOrdered,
   HandCoins,
   Settings,
 } from "lucide-react";
-import { AnimatePresence } from "framer-motion";
+
+const ModalHost = lazy(() => import("./ModalHost"));
 
 const NAV_ITEMS = [
   { path: "/", label: "Summary", icon: LayoutDashboard },
@@ -22,17 +21,37 @@ const NAV_ITEMS = [
 export default function Layout({ children }) {
   const [addOpen, setAddOpen] = useState(false);
   const [transferOpen, setTransferOpen] = useState(false);
+  const [modalHostLoaded, setModalHostLoaded] = useState(false);
+
+  const openAdd = () => {
+    setModalHostLoaded(true);
+    setAddOpen(true);
+  };
+  const openTransfer = () => {
+    setModalHostLoaded(true);
+    setTransferOpen(true);
+  };
 
   return (
     <div className="min-h-screen flex flex-col bg-gray-50 dark:bg-neutral-950 transition-colors duration-200 pb-20 sm:pb-0">
+      <a
+        href="#main-content"
+        className="sr-only focus:not-sr-only focus:fixed focus:top-2 focus:left-2 focus:z-[100] focus:bg-white focus:px-4 focus:py-2 focus:text-indigo-700 focus:rounded-lg"
+      >
+        Skip to main content
+      </a>
       <Header />
 
-      <main className="flex-1 w-full max-w-6xl mx-auto p-4 sm:p-6">
+      <main
+        id="main-content"
+        tabIndex={-1}
+        className="flex-1 w-full max-w-6xl mx-auto p-4 sm:p-6"
+      >
         {children}
       </main>
 
       {/* Mobile Bottom Navigation */}
-      <nav className="sm:hidden fixed bottom-0 inset-x-0 glass border-t border-gray-200 dark:border-neutral-800 z-40 pb-safe">
+      <nav aria-label="Mobile navigation" className="sm:hidden fixed bottom-0 inset-x-0 glass border-t border-gray-200 dark:border-neutral-800 z-40 pb-safe">
         <div className="flex items-center justify-around h-16">
           {NAV_ITEMS.map((item) => (
             <NavLink
@@ -51,21 +70,20 @@ export default function Layout({ children }) {
 
       {/* FAB & Modals */}
       <FloatingButton
-        onAddClick={() => setAddOpen(true)}
-        onTransferClick={() => setTransferOpen(true)}
+        onAddClick={openAdd}
+        onTransferClick={openTransfer}
       />
 
-      <AnimatePresence>
-        {addOpen && (
-          <AddEntryModal isOpen={addOpen} onClose={() => setAddOpen(false)} />
-        )}
-        {transferOpen && (
-          <TransferModal
-            isOpen={transferOpen}
-            onClose={() => setTransferOpen(false)}
+      {modalHostLoaded && (
+        <Suspense fallback={null}>
+          <ModalHost
+            addOpen={addOpen}
+            transferOpen={transferOpen}
+            onCloseAdd={() => setAddOpen(false)}
+            onCloseTransfer={() => setTransferOpen(false)}
           />
-        )}
-      </AnimatePresence>
+        </Suspense>
+      )}
     </div>
   );
 }

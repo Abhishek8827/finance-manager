@@ -85,9 +85,10 @@ export default function Summary() {
       <div className="card flex items-center justify-between p-2">
         <button
           onClick={handlePrev}
+          aria-label="Previous month"
           className="p-2 hover:bg-gray-100 dark:hover:bg-neutral-800 rounded-xl transition"
         >
-          <ChevronLeft className="w-5 h-5 text-gray-600 dark:text-gray-300" />
+          <ChevronLeft aria-hidden="true" className="w-5 h-5 text-gray-600 dark:text-gray-300" />
         </button>
         <div className="flex items-center gap-2">
           <span className="font-bold text-gray-800 dark:text-gray-100">
@@ -104,10 +105,11 @@ export default function Summary() {
         </div>
         <button
           onClick={handleNext}
+          aria-label="Next month"
           disabled={isSameMonth(date, new Date()) && !isAllTime}
           className="p-2 hover:bg-gray-100 dark:hover:bg-neutral-800 rounded-xl transition disabled:opacity-30"
         >
-          <ChevronRight className="w-5 h-5 text-gray-600 dark:text-gray-300" />
+          <ChevronRight aria-hidden="true" className="w-5 h-5 text-gray-600 dark:text-gray-300" />
         </button>
       </div>
 
@@ -151,7 +153,7 @@ export default function Summary() {
         {/* Income */}
         <div className="card p-4 flex flex-col justify-between">
           <div className="flex justify-between items-start mb-2">
-            <p className="text-xs font-bold text-gray-400 dark:text-zinc-500 uppercase tracking-wider">
+            <p className="text-xs font-bold text-gray-500 dark:text-zinc-400 uppercase tracking-wider">
               Income
             </p>
             {!isAllTime && (
@@ -180,7 +182,7 @@ export default function Summary() {
         {/* Expense */}
         <div className="card p-4 flex flex-col justify-between">
           <div className="flex justify-between items-start mb-2">
-            <p className="text-xs font-bold text-gray-400 dark:text-zinc-500 uppercase tracking-wider">
+            <p className="text-xs font-bold text-gray-500 dark:text-zinc-400 uppercase tracking-wider">
               Expense
             </p>
             {!isAllTime && (
@@ -214,7 +216,7 @@ export default function Summary() {
           <h3 className="text-xl font-bold text-gray-900 dark:text-white mt-auto">
             {formatPaise(monthTotals.netPaise)}
           </h3>
-          <p className="text-[10px] text-gray-400 dark:text-zinc-500 mt-1">
+          <p className="text-[10px] text-gray-500 dark:text-zinc-400 mt-1">
             Income − Expense
           </p>
         </div>
@@ -222,7 +224,7 @@ export default function Summary() {
         {/* Settlements — NOT part of wallet */}
         <div className="card p-4 flex flex-col justify-between border-dashed border-2 border-indigo-200 dark:border-indigo-900/50 bg-indigo-50/40 dark:bg-indigo-950/20">
           <div className="mb-2">
-            <p className="text-xs font-bold text-indigo-500 dark:text-indigo-300 uppercase tracking-wider">
+            <p className="text-xs font-bold text-indigo-700 dark:text-indigo-300 uppercase tracking-wider">
               Pending Outside Wallet
             </p>
             <p className="text-[10px] text-gray-500 dark:text-zinc-400 mt-0.5">
@@ -231,7 +233,7 @@ export default function Summary() {
           </div>
           <div className="flex justify-between items-end mt-auto gap-3">
             <div>
-              <p className="text-[10px] font-bold text-gray-400 uppercase">
+              <p className="text-[10px] font-bold text-gray-500 uppercase">
                 You get
               </p>
               <p className="text-base font-bold text-emerald-600 dark:text-emerald-400">
@@ -239,7 +241,7 @@ export default function Summary() {
               </p>
             </div>
             <div className="text-right">
-              <p className="text-[10px] font-bold text-gray-400 uppercase">
+              <p className="text-[10px] font-bold text-gray-500 uppercase">
                 You owe
               </p>
               <p className="text-base font-bold text-red-600 dark:text-red-400">
