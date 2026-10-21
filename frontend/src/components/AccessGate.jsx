@@ -116,7 +116,7 @@ export default function AccessGate() {
                 <LockKeyhole size={22} aria-hidden="true" />
               </div>
               <p className="mb-2 text-sm font-semibold text-indigo-700">
-                Welcome back
+                Hii, Abhishek!
               </p>
               <h2
                 id="access-title"
