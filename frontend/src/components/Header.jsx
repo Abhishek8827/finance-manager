@@ -252,7 +252,6 @@ import {
   Settings as SettingsIcon,
   Sun,
   Moon,
-  LockKeyhole,
 } from "lucide-react";
 
 const NAV_ITEMS = [
@@ -269,7 +268,6 @@ export default function Header() {
     switchAccount,
     renameAccount,
     createAccount,
-    logout,
   } = useApp();
   const [open, setOpen] = useState(false);
   const [editingId, setEditingId] = useState(null);
@@ -356,7 +354,10 @@ export default function Header() {
           </button>
 
           {open && (
-            <div id="account-switcher-menu" className="absolute top-full left-1/2 -translate-x-1/2 mt-2 w-64 bg-white dark:bg-zinc-900 border border-gray-100 dark:border-zinc-800 rounded-2xl shadow-xl py-2 z-50">
+            <div
+              id="account-switcher-menu"
+              className="absolute top-full left-1/2 -translate-x-1/2 mt-2 w-64 bg-white dark:bg-zinc-900 border border-gray-100 dark:border-zinc-800 rounded-2xl shadow-xl py-2 z-50"
+            >
               <div className="px-3 py-1 text-[10px] font-bold text-gray-500 dark:text-zinc-400 uppercase tracking-wider">
                 Select Account
               </div>
@@ -451,14 +452,6 @@ export default function Header() {
                     + Add New Account
                   </button>
                 )}
-                <button
-                  type="button"
-                  onClick={logout}
-                  className="w-full flex items-center gap-2 text-xs font-semibold text-gray-600 dark:text-zinc-300 px-2 py-2 hover:bg-gray-100 dark:hover:bg-zinc-800 rounded-lg"
-                >
-                  <LockKeyhole className="w-4 h-4" aria-hidden="true" />
-                  Lock app
-                </button>
               </div>
             </div>
           )}
@@ -466,7 +459,10 @@ export default function Header() {
 
         {/* Right Section */}
         <div className="flex items-center gap-1 sm:gap-2">
-          <nav aria-label="Primary navigation" className="hidden sm:flex items-center gap-1">
+          <nav
+            aria-label="Primary navigation"
+            className="hidden sm:flex items-center gap-1"
+          >
             {NAV_ITEMS.map((item) => (
               <NavLink
                 key={item.path}
@@ -487,7 +483,9 @@ export default function Header() {
 
           <button
             onClick={toggleTheme}
-            aria-label={isDark ? "Switch to light theme" : "Switch to dark theme"}
+            aria-label={
+              isDark ? "Switch to light theme" : "Switch to dark theme"
+            }
             aria-pressed={isDark}
             className="p-2 text-gray-500 dark:text-zinc-400 hover:bg-gray-100 dark:hover:bg-zinc-800 rounded-xl transition-colors"
             title="Toggle Dark Mode"
