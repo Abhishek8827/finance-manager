@@ -8,21 +8,24 @@ const seedData = async () => {
   await connectDB();
 
   try {
-    const accountCount = await Account.countDocuments();
-    if (accountCount === 0) {
-      await Account.insertMany([
-        { name: "Abhishek" },
-        { name: "Father" },
-        { name: "Brother" },
-      ]);
-      console.log("Default accounts created");
-    } else {
-      console.log("Accounts already exist, skipping");
+    const defaultAccounts = [
+      { name: "Abhishek", slug: "abhishek" },
+      { name: "Father", slug: "father" },
+      { name: "Brother", slug: "brother" },
+    ];
+    for (const account of defaultAccounts) {
+      await Account.updateOne(
+        { slug: account.slug },
+        { $setOnInsert: account },
+        { upsert: true },
+      );
     }
+    console.log("Default accounts available");
 
     const headCount = await Head.countDocuments();
     if (headCount === 0) {
-      await Head.insertMany([
+      const accounts = await Account.find();
+      const defaultHeads = [
         { name: "Salary", type: "income" },
         { name: "Business", type: "income" },
         { name: "Freelance", type: "income" },
@@ -37,7 +40,12 @@ const seedData = async () => {
         { name: "Entertainment", type: "expense" },
         { name: "Education", type: "expense" },
         { name: "Other", type: "expense" },
-      ]);
+      ];
+      await Head.insertMany(
+        accounts.flatMap((account) =>
+          defaultHeads.map((head) => ({ ...head, account: account._id })),
+        ),
+      );
       console.log("Default heads created");
     } else {
       console.log("Heads already exist, skipping");

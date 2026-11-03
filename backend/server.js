@@ -5,8 +5,6 @@ const helmet = require("helmet");
 const cookieParser = require("cookie-parser");
 const connectDB = require("./config/db");
 const errorHandler = require("./middleware/errorHandler");
-const { requireAppAccess } = require("./middleware/appAccess");
-const authRoutes = require("./routes/authRoutes");
 
 const accountRoutes = require("./routes/accountRoutes");
 const headRoutes = require("./routes/headRoutes");
@@ -35,9 +33,7 @@ app.use(
     origin: function (origin, callback) {
       if (!origin) return callback(null, true);
       const normalizedOrigin = cleanOrigin(origin);
-      if (
-        allowedOrigins.includes(normalizedOrigin)
-      ) {
+      if (allowedOrigins.includes(normalizedOrigin)) {
         return callback(null, true);
       }
       return callback(null, false);
@@ -50,8 +46,6 @@ app.use(
 app.use(express.json());
 app.use(cookieParser());
 
-app.use(["/api/auth", "/auth"], authRoutes);
-
 // Root & Health Checks
 app.get("/", (req, res) =>
   res.json({ ok: true, service: "finance-manager-api" }),
@@ -59,12 +53,11 @@ app.get("/", (req, res) =>
 app.get("/health", (req, res) => res.json({ status: "ok" }));
 app.get("/api/health", (req, res) => res.json({ status: "ok" }));
 
-// Every data route requires a short-lived bearer token issued after app unlock.
-app.use(["/api/accounts", "/accounts"], requireAppAccess, accountRoutes);
-app.use(["/api/heads", "/heads"], requireAppAccess, headRoutes);
-app.use(["/api/entries", "/entries"], requireAppAccess, entryRoutes);
-app.use(["/api/loans", "/loans"], requireAppAccess, loanRoutes);
-app.use(["/api/summary", "/summary"], requireAppAccess, summaryRoutes);
+app.use(["/api/accounts", "/accounts"], accountRoutes);
+app.use(["/api/heads", "/heads"], headRoutes);
+app.use(["/api/entries", "/entries"], entryRoutes);
+app.use(["/api/loans", "/loans"], loanRoutes);
+app.use(["/api/summary", "/summary"], summaryRoutes);
 
 app.use(errorHandler);
 
