@@ -1,5 +1,9 @@
 const express = require("express");
 const Account = require("../models/Account");
+const Entry = require("../models/Entry");
+const Head = require("../models/Head");
+const Loan = require("../models/Loan");
+const Recurring = require("../models/Recurring");
 
 const router = express.Router();
 
@@ -11,6 +15,36 @@ router.get("/", async (req, res, next) => {
     res.json(accounts);
   } catch (e) {
     next(e);
+  }
+});
+
+router.put("/:id/note", async (req, res, next) => {
+  try {
+    const note = typeof req.body.note === "string" ? req.body.note : "";
+    const account = await Account.findByIdAndUpdate(
+      req.params.id,
+      { note: note.slice(0, 10000) },
+      { new: true, runValidators: true, select: { pinHash: 0 } },
+    );
+    if (!account) return res.status(404).json({ error: "Account not found" });
+    res.json(account);
+  } catch (error) {
+    next(error);
+  }
+});
+
+router.delete("/reset", async (req, res, next) => {
+  try {
+    await Promise.all([
+      Entry.deleteMany({}),
+      Head.deleteMany({}),
+      Loan.deleteMany({}),
+      Recurring.deleteMany({}),
+      Account.updateMany({}, { $set: { note: "" } }),
+    ]);
+    res.json({ reset: true });
+  } catch (error) {
+    next(error);
   }
 });
 

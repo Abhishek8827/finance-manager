@@ -4,6 +4,7 @@ const accountSchema = new mongoose.Schema(
     name: { type: String, required: true, trim: true, maxlength: 40 },
     slug: { type: String, unique: true, lowercase: true, trim: true },
     color: { type: String, default: "#6366f1" },
+    note: { type: String, default: "", maxlength: 10000 },
     pinHash: { type: String, default: null }, // for Auth
     pinFailedCount: { type: Number, default: 0 },
     pinLockedUntil: { type: Date, default: null },
