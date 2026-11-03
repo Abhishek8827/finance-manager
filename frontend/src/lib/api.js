@@ -27,13 +27,6 @@ export function setAccessToken(token) {
 API.interceptors.response.use(
   (response) => response.data,
   (error) => {
-    if (
-      error.response?.status === 401 &&
-      !error.config?.url?.includes("/auth/login")
-    ) {
-      setAccessToken(null);
-      window.dispatchEvent(new Event("finance-manager:auth-expired"));
-    }
     const message =
       error.response?.data?.error || error.message || "Something went wrong";
     const customError = new Error(message);

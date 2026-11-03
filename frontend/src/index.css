@@ -19,13 +19,38 @@
     --muted: 161 161 170;
   }
 
-  html, body, #root {
+  html,
+  body,
+  #root {
     background-color: rgb(var(--bg));
     color: rgb(var(--text));
     min-height: 100%;
+    width: 100%;
+    overflow-x: hidden;
   }
 
-  * { -webkit-tap-highlight-color: transparent; }
+  body {
+    min-width: 320px;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  button,
+  input,
+  select,
+  textarea {
+    touch-action: manipulation;
+  }
+
+  img,
+  svg,
+  video,
+  canvas {
+    max-width: 100%;
+  }
+
+  * {
+    -webkit-tap-highlight-color: transparent;
+  }
 
   :focus-visible {
     outline: 2px solid #4f46e5;
@@ -62,9 +87,37 @@
     @apply backdrop-blur-xl bg-white/80 dark:bg-zinc-950/80
            border-b border-gray-200/60 dark:border-zinc-800/60;
   }
+
+  .pb-safe {
+    padding-bottom: env(safe-area-inset-bottom);
+  }
 }
 
-::-webkit-scrollbar { width: 6px; height: 6px; }
+@media (max-width: 639px) {
+  button:not(.no-min-touch),
+  [role="button"] {
+    min-height: 44px;
+  }
+
+  table {
+    display: block;
+    width: 100%;
+    overflow-x: auto;
+    white-space: nowrap;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  input,
+  select,
+  textarea {
+    font-size: 16px;
+  }
+}
+
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
 ::-webkit-scrollbar-thumb {
   background: rgb(var(--border));
   border-radius: 3px;
