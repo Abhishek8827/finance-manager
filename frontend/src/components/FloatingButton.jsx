@@ -26,6 +26,16 @@ export default function FloatingButton({ onAddClick, onTransferClick }) {
   return (
     <div
       ref={ref}
+      onMouseEnter={() => {
+        if (window.matchMedia("(hover: hover) and (pointer: fine)").matches) {
+          setIsOpen(true);
+        }
+      }}
+      onMouseLeave={() => {
+        if (window.matchMedia("(hover: hover) and (pointer: fine)").matches) {
+          setIsOpen(false);
+        }
+      }}
       className="fixed bottom-20 sm:bottom-8 right-4 sm:right-8 z-50"
     >
       {isOpen && (
@@ -68,7 +78,7 @@ export default function FloatingButton({ onAddClick, onTransferClick }) {
         aria-expanded={isOpen}
         aria-controls="quick-actions-menu"
         data-dialog-return-focus
-        className="w-14 h-14 bg-primary-600 text-white rounded-full shadow-lg shadow-primary-200 flex items-center justify-center hover:bg-primary-700 transition-transform active:scale-90"
+        className="w-14 h-14 bg-primary-600 text-white rounded-full shadow-lg shadow-primary-200 flex items-center justify-center hover:bg-primary-700 hover:scale-105 hover:shadow-xl hover:shadow-primary-300 focus-visible:scale-105 transition-all duration-200 active:scale-95"
       >
         <Plus
           className={`w-7 h-7 transition-transform ${isOpen ? "rotate-45" : "rotate-0"}`}

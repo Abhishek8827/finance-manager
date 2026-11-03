@@ -36,9 +36,12 @@ export default function Layout({ children }) {
   }, [selectedAccount]);
 
   useEffect(() => {
-    if (!selectedAccount?._id || noteLoadedAccount !== selectedAccount._id) return;
+    if (!selectedAccount?._id || noteLoadedAccount !== selectedAccount._id)
+      return;
     const timeout = window.setTimeout(() => {
-      API.put(`/accounts/${selectedAccount._id}/note`, { note }).catch(() => {});
+      API.put(`/accounts/${selectedAccount._id}/note`, { note }).catch(
+        () => {},
+      );
     }, 500);
     return () => window.clearTimeout(timeout);
   }, [note, noteLoadedAccount, selectedAccount]);
@@ -66,11 +69,17 @@ export default function Layout({ children }) {
       </a>
       <Header />
 
-      <aside className="hidden 2xl:block fixed left-5 top-24 z-30 w-64" aria-label="Quick note">
+      <aside
+        className="hidden 2xl:block fixed left-5 top-24 z-30 w-64"
+        aria-label="Quick note"
+      >
         <div className="card overflow-hidden shadow-lg">
           <div className="flex items-center justify-between border-b border-gray-100 px-4 py-3 dark:border-zinc-800">
             <div className="flex items-center gap-2 text-sm font-bold text-gray-700 dark:text-zinc-200">
-              <StickyNote className="h-4 w-4 text-indigo-600 dark:text-indigo-400" aria-hidden="true" />
+              <StickyNote
+                className="h-4 w-4 text-indigo-600 dark:text-indigo-400"
+                aria-hidden="true"
+              />
               Quick note
             </div>
             <button
@@ -103,7 +112,10 @@ export default function Layout({ children }) {
       </main>
 
       {/* Mobile Bottom Navigation */}
-      <nav aria-label="Mobile navigation" className="sm:hidden fixed bottom-0 inset-x-0 glass border-t border-gray-200 dark:border-neutral-800 z-40 pb-safe">
+      <nav
+        aria-label="Mobile navigation"
+        className="sm:hidden fixed bottom-0 inset-x-0 glass border-t border-gray-200 dark:border-neutral-800 z-40 pb-safe"
+      >
         <div className="flex items-center justify-around h-16">
           {NAV_ITEMS.map((item) => (
             <NavLink
@@ -121,10 +133,7 @@ export default function Layout({ children }) {
       </nav>
 
       {/* FAB & Modals */}
-      <FloatingButton
-        onAddClick={openAdd}
-        onTransferClick={openTransfer}
-      />
+      <FloatingButton onAddClick={openAdd} onTransferClick={openTransfer} />
 
       {modalHostLoaded && (
         <Suspense fallback={null}>
