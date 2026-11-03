@@ -5,19 +5,16 @@ import {
   useState,
   useCallback,
 } from "react";
-import { useQueryClient } from "@tanstack/react-query";
-import API, { setAccessToken } from "../lib/api";
+import API from "../lib/api";
 import { toast } from "sonner";
 
 const AppContext = createContext(null);
 export const useApp = () => useContext(AppContext);
 
 export function AppProvider({ children }) {
-  const queryClient = useQueryClient();
   const [accounts, setAccounts] = useState([]);
   const [selectedAccount, setSelectedAccount] = useState(null);
-  const [authenticated, setAuthenticated] = useState(false);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
 
   const fetchAccounts = useCallback(async () => {
     const data = await API.get("/accounts");
@@ -31,44 +28,13 @@ export function AppProvider({ children }) {
     }
   }, []);
 
-  const login = useCallback(
-    async (password) => {
-      setLoading(true);
-      try {
-        const { token } = await API.post("/auth/login", { password });
-        setAccessToken(token);
-        await fetchAccounts();
-        setAuthenticated(true);
-      } catch (error) {
-        setAccessToken(null);
-        setAccounts([]);
-        setSelectedAccount(null);
-        throw error;
-      } finally {
-        setLoading(false);
-      }
-    },
-    [fetchAccounts],
-  );
-
-  const logout = useCallback(() => {
-    setAccessToken(null);
-    setAuthenticated(false);
-    setAccounts([]);
-    setSelectedAccount(null);
-    localStorage.removeItem("selectedAccountId");
-    queryClient.clear();
-  }, [queryClient]);
-
   useEffect(() => {
-    const handleExpired = () => {
-      logout();
-      toast.error("Your session expired. Unlock the app to continue.");
-    };
-    window.addEventListener("finance-manager:auth-expired", handleExpired);
-    return () =>
-      window.removeEventListener("finance-manager:auth-expired", handleExpired);
-  }, [logout]);
+    fetchAccounts()
+      .catch((error) => {
+        toast.error(error.message || "Unable to load accounts");
+      })
+      .finally(() => setLoading(false));
+  }, [fetchAccounts]);
 
   const switchAccount = (acc) => {
     setSelectedAccount(acc);
@@ -77,7 +43,9 @@ export function AppProvider({ children }) {
 
   const createAccount = async (name) => {
     const acc = await API.post("/accounts", { name });
-    setAccounts((p) => [...p, acc]);
+    setAccounts((current) => [...current, acc]);
+    setSelectedAccount(acc);
+    localStorage.setItem("selectedAccountId", acc._id);
     toast.success("Account created");
     return acc;
   };
@@ -94,9 +62,6 @@ export function AppProvider({ children }) {
       value={{
         accounts,
         selectedAccount,
-        authenticated,
-        login,
-        logout,
         switchAccount,
         createAccount,
         renameAccount,

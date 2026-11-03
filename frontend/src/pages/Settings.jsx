@@ -1,10 +1,15 @@
+import { useState } from "react";
 import {
   Download,
   FileJson,
   Smartphone,
   CheckCircle,
   Share,
+  RotateCcw,
+  Trash2,
+  X,
 } from "lucide-react";
+import { useQueryClient } from "@tanstack/react-query";
 import API from "../lib/api";
 import { toast } from "sonner";
 import { useApp } from "../context/AppContext";
@@ -13,7 +18,10 @@ import { usePWAInstall } from "../hooks/usePWAInstall";
 
 export default function Settings() {
   const { selectedAccount } = useApp();
+  const queryClient = useQueryClient();
   const { isInstallable, isInstalled, installApp } = usePWAInstall();
+  const [showReset, setShowReset] = useState(false);
+  const [resetting, setResetting] = useState(false);
 
   const handleExport = async (type) => {
     try {
@@ -64,6 +72,22 @@ export default function Settings() {
     const success = await installApp();
     if (success) {
       toast.success("App installed on Home Screen!");
+    }
+  };
+
+  const handleFullReset = async () => {
+    setResetting(true);
+    try {
+      await API.delete("/accounts/reset");
+      localStorage.removeItem("selectedAccountId");
+      queryClient.clear();
+      setShowReset(false);
+      toast.success("All finance data has been reset");
+      window.location.reload();
+    } catch (error) {
+      toast.error(error.message || "Reset failed");
+    } finally {
+      setResetting(false);
     }
   };
 
@@ -130,6 +154,34 @@ export default function Settings() {
         </div>
       </div>
 
+      {/* DATA RESET */}
+      <div className="card overflow-hidden border-red-100 dark:border-red-950/60">
+        <div className="px-4 sm:px-5 py-3 bg-red-50/70 dark:bg-red-950/20 border-b border-red-100 dark:border-red-950/60">
+          <h3 className="text-sm font-bold text-red-700 dark:text-red-300 uppercase tracking-widest">
+            Danger Zone
+          </h3>
+        </div>
+        <div className="p-4 sm:p-5 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+          <div className="min-w-0">
+            <p className="font-bold text-gray-800 dark:text-zinc-100 text-sm">
+              Full app reset
+            </p>
+            <p className="mt-1 text-xs leading-5 text-gray-500 dark:text-zinc-400">
+              Permanently delete entries, heads, loans, and recurring payments.
+              Accounts will be kept.
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={() => setShowReset(true)}
+            className="inline-flex min-h-11 w-full sm:w-auto shrink-0 items-center justify-center gap-2 rounded-xl bg-red-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-red-700 active:bg-red-800"
+          >
+            <Trash2 className="h-4 w-4" aria-hidden="true" />
+            Reset everything
+          </button>
+        </div>
+      </div>
+
       {/* EXPORT DATA */}
       <div className="card overflow-hidden">
         <div className="px-5 py-3 bg-gray-50 dark:bg-zinc-800/50 border-b border-gray-100 dark:border-zinc-800">
@@ -173,6 +225,59 @@ export default function Settings() {
           </button>
         </div>
       </div>
+
+      {showReset && (
+        <div
+          className="fixed inset-0 z-[100] flex items-end sm:items-center justify-center bg-black/50 p-0 sm:p-4"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="reset-title"
+        >
+          <div className="w-full max-h-[90vh] overflow-y-auto rounded-t-2xl sm:rounded-2xl bg-white p-5 pb-safe dark:bg-zinc-900 sm:max-w-md">
+            <div className="flex items-start justify-between gap-4">
+              <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-red-100 text-red-600 dark:bg-red-950/50 dark:text-red-400">
+                <RotateCcw className="h-5 w-5" aria-hidden="true" />
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowReset(false)}
+                className="flex min-h-11 min-w-11 items-center justify-center rounded-xl text-gray-500 hover:bg-gray-100 dark:text-zinc-400 dark:hover:bg-zinc-800"
+                aria-label="Close reset confirmation"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+            <h2
+              id="reset-title"
+              className="mt-4 text-xl font-bold text-gray-900 dark:text-white"
+            >
+              Reset the entire app?
+            </h2>
+            <p className="mt-2 text-sm leading-6 text-gray-600 dark:text-zinc-400">
+              This permanently removes all finance records while keeping your
+              accounts. This action cannot be undone.
+            </p>
+            <div className="mt-6 grid grid-cols-1 gap-3 sm:grid-cols-2">
+              <button
+                type="button"
+                onClick={() => setShowReset(false)}
+                disabled={resetting}
+                className="min-h-11 rounded-xl bg-gray-100 px-4 py-3 text-sm font-semibold text-gray-700 hover:bg-gray-200 disabled:opacity-50 dark:bg-zinc-800 dark:text-zinc-200 dark:hover:bg-zinc-700"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleFullReset}
+                disabled={resetting}
+                className="min-h-11 rounded-xl bg-red-600 px-4 py-3 text-sm font-semibold text-white hover:bg-red-700 disabled:cursor-wait disabled:opacity-60"
+              >
+                {resetting ? "Resetting..." : "Delete everything"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

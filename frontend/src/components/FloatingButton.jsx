@@ -39,36 +39,36 @@ export default function FloatingButton({ onAddClick, onTransferClick }) {
       className="fixed bottom-20 sm:bottom-8 right-4 sm:right-8 z-50"
     >
       {isOpen && (
-          <div
-            id="quick-actions-menu"
-            aria-label="Quick actions"
-            className="absolute bottom-16 right-0 flex flex-col gap-3 items-end mb-2 animate-fade-in"
+        <div
+          id="quick-actions-menu"
+          aria-label="Quick actions"
+          className="absolute bottom-16 right-0 flex flex-col gap-3 items-end mb-2 animate-fade-in"
+        >
+          <button
+            onClick={() => {
+              setIsOpen(false);
+              onAddClick();
+            }}
+            className="flex items-center gap-3 bg-white px-4 py-2.5 rounded-full shadow-card border border-gray-100 text-sm font-semibold text-gray-700 hover:bg-gray-50 transition active:scale-95 whitespace-nowrap"
           >
-            <button
-              onClick={() => {
-                setIsOpen(false);
-                onAddClick();
-              }}
-              className="flex items-center gap-3 bg-white px-4 py-2.5 rounded-full shadow-card border border-gray-100 text-sm font-semibold text-gray-700 hover:bg-gray-50 transition active:scale-95 whitespace-nowrap"
-            >
-              Add Entry
-              <div className="w-8 h-8 bg-emerald-100 text-emerald-600 rounded-full flex items-center justify-center">
-                <ReceiptText className="w-4 h-4" aria-hidden="true" />
-              </div>
-            </button>
-            <button
-              onClick={() => {
-                setIsOpen(false);
-                onTransferClick();
-              }}
-              className="flex items-center gap-3 bg-white px-4 py-2.5 rounded-full shadow-card border border-gray-100 text-sm font-semibold text-gray-700 hover:bg-gray-50 transition active:scale-95 whitespace-nowrap"
-            >
-              Transfer
-              <div className="w-8 h-8 bg-blue-100 text-blue-600 rounded-full flex items-center justify-center">
-                <ArrowRightLeft className="w-4 h-4" aria-hidden="true" />
-              </div>
-            </button>
-          </div>
+            Add Entry
+            <div className="w-8 h-8 bg-emerald-100 text-emerald-600 rounded-full flex items-center justify-center">
+              <ReceiptText className="w-4 h-4" aria-hidden="true" />
+            </div>
+          </button>
+          <button
+            onClick={() => {
+              setIsOpen(false);
+              onTransferClick();
+            }}
+            className="flex items-center gap-3 bg-white px-4 py-2.5 rounded-full shadow-card border border-gray-100 text-sm font-semibold text-gray-700 hover:bg-gray-50 transition active:scale-95 whitespace-nowrap"
+          >
+            Transfer
+            <div className="w-8 h-8 bg-blue-100 text-blue-600 rounded-full flex items-center justify-center">
+              <ArrowRightLeft className="w-4 h-4" aria-hidden="true" />
+            </div>
+          </button>
+        </div>
       )}
 
       <button
