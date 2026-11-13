@@ -17,6 +17,7 @@ export default function Sheet({
   footer,
   size = "md",
   labelledBy,
+  glass = false,
 }) {
   const dialogRef = useDialogAccessibility(open, onClose);
 
@@ -60,14 +61,21 @@ export default function Sheet({
             exit={{ y: 16, opacity: 0 }}
             transition={{ type: "spring", damping: 28, stiffness: 320 }}
             className={cn(
-              "relative flex max-h-[92vh] w-full flex-col overflow-hidden rounded-t-3xl bg-white shadow-2xl",
-              "dark:bg-zinc-900 sm:rounded-3xl",
+              "relative flex max-h-[92vh] w-full flex-col overflow-hidden rounded-t-3xl shadow-2xl sm:rounded-3xl",
               widths[size] || widths.md,
+              glass
+                ? "border border-white/60 bg-white/70 ring-1 ring-slate-900/5 backdrop-blur-2xl backdrop-saturate-150 dark:border-white/10 dark:bg-zinc-900/60 dark:ring-white/5"
+                : "bg-white dark:bg-zinc-900",
             )}
           >
             <div
               aria-hidden="true"
-              className="mx-auto mt-2.5 h-1 w-10 shrink-0 rounded-full bg-slate-200 dark:bg-zinc-700 sm:hidden"
+              className={cn(
+                "mx-auto mt-2.5 h-1 w-10 shrink-0 rounded-full sm:hidden",
+                glass
+                  ? "bg-slate-400/40 dark:bg-white/20"
+                  : "bg-slate-200 dark:bg-zinc-700",
+              )}
             />
 
             <div className="flex items-start justify-between gap-4 px-5 pb-3 pt-4 sm:pt-5">
@@ -101,7 +109,14 @@ export default function Sheet({
             </div>
 
             {footer && (
-              <div className="border-t border-slate-100 bg-slate-50/80 px-5 py-4 pb-safe dark:border-zinc-800 dark:bg-zinc-950/40">
+              <div
+                className={cn(
+                  "px-5 py-4 pb-safe",
+                  glass
+                    ? "border-t border-white/40 bg-white/30 backdrop-blur-xl dark:border-white/10 dark:bg-white/5"
+                    : "border-t border-slate-100 bg-slate-50/80 dark:border-zinc-800 dark:bg-zinc-950/40",
+                )}
+              >
                 {footer}
               </div>
             )}
