@@ -3,6 +3,8 @@ import { NavLink } from "react-router-dom";
 import Header, { NAV_ITEMS } from "./Header";
 import FloatingButton from "./FloatingButton";
 import RouteChrome from "./RouteChrome";
+import NoteButton from "./NoteButton";
+import NoteModal from "./NoteModal";
 import API from "../lib/api";
 import { useApp } from "../context/AppContext";
 import { onQuickActions } from "../lib/quickActions";
@@ -18,10 +20,12 @@ export default function Layout({ children }) {
   const [modalHostLoaded, setModalHostLoaded] = useState(false);
   const [note, setNote] = useState("");
   const [noteLoadedAccount, setNoteLoadedAccount] = useState(null);
+  const [noteOpen, setNoteOpen] = useState(false);
 
   useEffect(() => {
     setNote(selectedAccount?.note || "");
     setNoteLoadedAccount(selectedAccount?._id || null);
+    setNoteOpen(false);
   }, [selectedAccount]);
 
   useEffect(() => {
@@ -150,7 +154,20 @@ export default function Layout({ children }) {
         </div>
       </nav>
 
+      <NoteButton
+        onClick={() => setNoteOpen(true)}
+        hasNote={Boolean(note.trim())}
+      />
+
       <FloatingButton onAddClick={openAdd} onTransferClick={openTransfer} />
+
+      <NoteModal
+        open={noteOpen}
+        onClose={() => setNoteOpen(false)}
+        note={note}
+        onChange={setNote}
+        accountName={selectedAccount?.name}
+      />
 
       {modalHostLoaded && (
         <Suspense fallback={null}>

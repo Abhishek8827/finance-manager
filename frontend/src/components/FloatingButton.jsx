@@ -58,7 +58,7 @@ export default function FloatingButton({ onAddClick, onTransferClick }) {
         <div
           id="quick-actions-menu"
           aria-label="Quick actions"
-          className="absolute bottom-[68px] right-0 mb-1 flex animate-fade-in flex-col items-end gap-2.5"
+          className="absolute bottom-[128px] right-0 mb-1 flex animate-fade-in flex-col items-end gap-2.5 2xl:bottom-[68px]"
         >
           {actions.map((action) => (
             <button
