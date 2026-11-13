@@ -21,7 +21,9 @@ export default function useDialogAccessibility(isOpen, onClose) {
       );
 
     const initialFocus =
-      dialog?.querySelector("[autofocus]") ?? getFocusableElements()[0];
+      dialog?.querySelector(
+        "[autofocus], input:not([type='hidden']):not([disabled]), textarea:not([disabled]), select:not([disabled])",
+      ) ?? getFocusableElements()[0];
     initialFocus?.focus();
 
     const handleKeyDown = (event) => {

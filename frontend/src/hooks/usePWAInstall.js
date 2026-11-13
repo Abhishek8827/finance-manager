@@ -1,8 +1,9 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 
 export function usePWAInstall() {
   const [isInstallable, setIsInstallable] = useState(false);
   const [isInstalled, setIsInstalled] = useState(false);
+  const promptRef = useRef(null);
 
   useEffect(() => {
     if (
@@ -12,18 +13,42 @@ export function usePWAInstall() {
       setIsInstalled(true);
     }
 
-    const handleBeforeInstall = (e) => {
-      e.preventDefault();
+    const handleBeforeInstall = (event) => {
+      event.preventDefault();
+      promptRef.current = event;
       setIsInstallable(true);
     };
 
+    const handleInstalled = () => {
+      setIsInstalled(true);
+      setIsInstallable(false);
+      promptRef.current = null;
+    };
+
     window.addEventListener("beforeinstallprompt", handleBeforeInstall);
-    return () =>
+    window.addEventListener("appinstalled", handleInstalled);
+    return () => {
       window.removeEventListener("beforeinstallprompt", handleBeforeInstall);
+      window.removeEventListener("appinstalled", handleInstalled);
+    };
   }, []);
 
   const installApp = async () => {
-    return false;
+    const prompt = promptRef.current;
+    if (!prompt) return false;
+    try {
+      await prompt.prompt();
+      const choice = await prompt.userChoice;
+      const accepted = choice?.outcome === "accepted";
+      if (accepted) {
+        setIsInstalled(true);
+        setIsInstallable(false);
+      }
+      promptRef.current = null;
+      return accepted;
+    } catch {
+      return false;
+    }
   };
 
   return { isInstallable, isInstalled, installApp };

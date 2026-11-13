@@ -11,6 +11,7 @@ const headRoutes = require("./routes/headRoutes");
 const entryRoutes = require("./routes/entryRoutes");
 const loanRoutes = require("./routes/loanRoutes");
 const summaryRoutes = require("./routes/summaryRoutes");
+const exportRoutes = require("./routes/exportRoutes");
 
 const app = express();
 app.set("trust proxy", 1);
@@ -58,6 +59,7 @@ app.use(["/api/heads", "/heads"], headRoutes);
 app.use(["/api/entries", "/entries"], entryRoutes);
 app.use(["/api/loans", "/loans"], loanRoutes);
 app.use(["/api/summary", "/summary"], summaryRoutes);
+app.use("/api", exportRoutes);
 
 app.use(errorHandler);
 

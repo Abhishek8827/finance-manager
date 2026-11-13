@@ -1,78 +1,89 @@
 import { useState } from "react";
 import {
+  CheckCircle,
   Download,
   FileJson,
-  Smartphone,
-  CheckCircle,
-  Share,
+  Moon,
   RotateCcw,
+  Share,
+  Smartphone,
+  Sun,
+  Monitor,
   Trash2,
-  X,
+  Loader2,
 } from "lucide-react";
 import { useQueryClient } from "@tanstack/react-query";
-import API from "../lib/api";
 import { toast } from "sonner";
+import API from "../lib/api";
 import { useApp } from "../context/AppContext";
-// import { usePWAInstall } from "../hooks/usePWAInstall";
 import { usePWAInstall } from "../hooks/usePWAInstall";
+import { useTheme } from "../hooks/useTheme";
+import Segmented from "../components/ui/Segmented";
+import Sheet from "../components/ui/Sheet";
+
+function downloadBlob(blob, filename) {
+  const url = window.URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.setAttribute("download", filename);
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  window.URL.revokeObjectURL(url);
+}
 
 export default function Settings() {
   const { selectedAccount } = useApp();
   const queryClient = useQueryClient();
   const { isInstallable, isInstalled, installApp } = usePWAInstall();
+  const { theme, setTheme } = useTheme();
+  const [busy, setBusy] = useState("");
   const [showReset, setShowReset] = useState(false);
   const [resetting, setResetting] = useState(false);
 
   const handleExport = async (type) => {
+    if (!selectedAccount?._id) return;
+    setBusy(type);
     try {
-      const res = await API.get(
+      const blob = await API.get(
         `/export.${type}?account=${selectedAccount._id}`,
-        {
-          responseType: "blob",
-        },
+        { responseType: "blob" },
       );
-      const url = window.URL.createObjectURL(new Blob([res]));
-      const link = document.createElement("a");
-      link.href = url;
-      link.setAttribute(
-        "download",
-        `FinanceExport_${selectedAccount?.name}_${type}.${type}`,
+      downloadBlob(
+        new Blob([blob]),
+        `finance-${selectedAccount.name.toLowerCase().replace(/\s+/g, "-")}.${type}`,
       );
-      document.body.appendChild(link);
-      link.click();
-      link.remove();
-      toast.success(`${type.toUpperCase()} Exported!`);
+      toast.success(`${type === "csv" ? "CSV" : "JSON"} downloaded`);
     } catch (e) {
-      toast.error("Export failed");
+      toast.error(e.message || "Export failed");
+    } finally {
+      setBusy("");
     }
   };
 
   const handleBackup = async () => {
+    if (!selectedAccount?._id) return;
+    setBusy("backup");
     try {
-      const res = await API.get(`/backup.json?account=${selectedAccount._id}`, {
-        responseType: "blob",
-      });
-      const url = window.URL.createObjectURL(new Blob([res]));
-      const link = document.createElement("a");
-      link.href = url;
-      link.setAttribute(
-        "download",
-        `Backup_${selectedAccount?.name}_${new Date().toISOString().split("T")[0]}.json`,
+      const blob = await API.get(
+        `/backup.json?account=${selectedAccount._id}`,
+        { responseType: "blob" },
       );
-      document.body.appendChild(link);
-      link.click();
-      link.remove();
-      toast.success("Backup downloaded!");
+      downloadBlob(
+        new Blob([blob], { type: "application/json" }),
+        `finance-backup-${new Date().toISOString().split("T")[0]}.json`,
+      );
+      toast.success("Backup downloaded");
     } catch (e) {
-      toast.error("Backup failed");
+      toast.error(e.message || "Backup failed");
+    } finally {
+      setBusy("");
     }
   };
 
   const handleInstallClick = async () => {
     const success = await installApp();
-    if (success) {
-      toast.success("App installed on Home Screen!");
-    }
+    if (success) toast.success("App installed on your home screen");
   };
 
   const handleFullReset = async () => {
@@ -92,192 +103,239 @@ export default function Settings() {
   };
 
   return (
-    <div className="space-y-6 pb-20 animate-fade-in">
-      <h2 className="text-2xl font-bold text-gray-900 dark:text-white">
-        Settings
-      </h2>
+    <div className="animate-fade-in space-y-5 pb-4">
+      <div>
+        <p className="section-label">Settings</p>
+        <h1 className="page-title mt-1">Preferences &amp; data</h1>
+        <p className="page-subtitle">
+          Everything is stored privately in your own database.
+        </p>
+      </div>
 
-      {/* APP INSTALL CARD */}
-      <div className="card overflow-hidden">
-        <div className="px-5 py-3 bg-gray-50 dark:bg-zinc-800/50 border-b border-gray-100 dark:border-zinc-800">
-          <h3 className="text-sm font-bold text-gray-700 dark:text-zinc-300 uppercase tracking-widest">
-            App Installation
-          </h3>
+      {/* Account */}
+      <section className="card">
+        <div className="card-head">
+          <h2 className="text-sm font-bold text-slate-900 dark:text-white">
+            Active account
+          </h2>
         </div>
-        <div className="p-5">
+        <div className="card-body flex items-center gap-3">
+          <span
+            className="flex h-11 w-11 items-center justify-center rounded-xl text-base font-bold text-white"
+            style={{ backgroundColor: selectedAccount?.color || "#6366f1" }}
+          >
+            {(selectedAccount?.name || "A").trim().slice(0, 1).toUpperCase()}
+          </span>
+          <div className="min-w-0">
+            <p className="truncate text-sm font-semibold text-slate-900 dark:text-white">
+              {selectedAccount?.name}
+            </p>
+            <p className="text-xs text-slate-500 dark:text-zinc-400">
+              Switch or rename accounts from the menu in the header.
+            </p>
+          </div>
+        </div>
+      </section>
+
+      {/* Appearance */}
+      <section className="card">
+        <div className="card-head">
+          <h2 className="text-sm font-bold text-slate-900 dark:text-white">
+            Appearance
+          </h2>
+        </div>
+        <div className="card-body">
+          <Segmented
+            ariaLabel="Theme"
+            value={theme}
+            onChange={setTheme}
+            options={[
+              { value: "light", label: "Light", icon: Sun },
+              { value: "dark", label: "Dark", icon: Moon },
+              { value: "system", label: "System", icon: Monitor },
+            ]}
+          />
+          <p className="mt-2 text-[11px] text-slate-500 dark:text-zinc-400">
+            System follows your device setting automatically.
+          </p>
+        </div>
+      </section>
+
+      {/* Install */}
+      <section className="card">
+        <div className="card-head">
+          <h2 className="text-sm font-bold text-slate-900 dark:text-white">
+            Install app
+          </h2>
+        </div>
+        <div className="card-body">
           {isInstalled ? (
             <div className="flex items-center gap-3 text-emerald-600 dark:text-emerald-400">
-              <CheckCircle className="w-6 h-6 shrink-0" />
+              <CheckCircle className="h-5 w-5 shrink-0" aria-hidden="true" />
               <div>
-                <p className="font-bold text-sm">Installed on Device</p>
-                <p className="text-xs text-gray-500 dark:text-zinc-400">
-                  You are using the installed app version.
+                <p className="text-sm font-semibold">Installed on this device</p>
+                <p className="text-xs text-slate-500 dark:text-zinc-400">
+                  You’re using the installed app version.
                 </p>
               </div>
             </div>
           ) : isInstallable ? (
-            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
               <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-full bg-indigo-100 dark:bg-indigo-900/40 text-indigo-600 dark:text-indigo-300 flex items-center justify-center shrink-0">
-                  <Smartphone className="w-5 h-5" />
-                </div>
+                <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-indigo-50 text-indigo-600 dark:bg-indigo-950/50 dark:text-indigo-300">
+                  <Smartphone className="h-5 w-5" aria-hidden="true" />
+                </span>
                 <div>
-                  <p className="font-bold text-gray-800 dark:text-zinc-100 text-sm">
-                    Install FinanceManager
+                  <p className="text-sm font-semibold text-slate-900 dark:text-white">
+                    Add to home screen
                   </p>
-                  <p className="text-xs text-gray-500 dark:text-zinc-400">
-                    Add app to your phone's home screen
+                  <p className="text-xs text-slate-500 dark:text-zinc-400">
+                    Works offline-first and opens full screen.
                   </p>
                 </div>
               </div>
-              <button
-                onClick={handleInstallClick}
-                className="btn-primary text-xs py-2.5 px-4 w-full sm:w-auto"
-              >
-                Install Now
+              <button onClick={handleInstallClick} className="btn-primary btn-sm">
+                Install
               </button>
             </div>
           ) : (
-            <div className="space-y-2 text-xs text-gray-500 dark:text-zinc-400">
-              <p className="font-semibold text-gray-700 dark:text-zinc-300">
-                To install on iPhone / iPad (Safari):
+            <div className="flex items-start gap-3 rounded-xl bg-slate-50 p-3 text-xs leading-5 text-slate-600 dark:bg-zinc-800/50 dark:text-zinc-300">
+              <Share
+                className="mt-0.5 h-4 w-4 shrink-0 text-indigo-500"
+                aria-hidden="true"
+              />
+              <p>
+                On iPhone or iPad: open this site in <b>Safari</b>, tap{" "}
+                <b>Share</b>, then <b>Add to Home Screen</b>.
               </p>
-              <div className="flex items-center gap-2 bg-gray-50 dark:bg-zinc-800/60 p-3 rounded-xl">
-                <Share className="w-4 h-4 text-indigo-500 shrink-0" />
-                <span>
-                  Tap <b>Share</b> in Safari, then select{" "}
-                  <b>Add to Home Screen</b>.
-                </span>
-              </div>
             </div>
           )}
         </div>
-      </div>
+      </section>
 
-      {/* DATA RESET */}
-      <div className="card overflow-hidden border-red-100 dark:border-red-950/60">
-        <div className="px-4 sm:px-5 py-3 bg-red-50/70 dark:bg-red-950/20 border-b border-red-100 dark:border-red-950/60">
-          <h3 className="text-sm font-bold text-red-700 dark:text-red-300 uppercase tracking-widest">
-            Danger Zone
-          </h3>
+      {/* Data */}
+      <section className="card overflow-hidden">
+        <div className="card-head">
+          <h2 className="text-sm font-bold text-slate-900 dark:text-white">
+            Backup &amp; export
+          </h2>
+          <span className="text-[11px] font-medium text-slate-500 dark:text-zinc-400">
+            {selectedAccount?.name}
+          </span>
         </div>
-        <div className="p-4 sm:p-5 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-          <div className="min-w-0">
-            <p className="font-bold text-gray-800 dark:text-zinc-100 text-sm">
-              Full app reset
-            </p>
-            <p className="mt-1 text-xs leading-5 text-gray-500 dark:text-zinc-400">
-              Permanently delete entries, heads, loans, and recurring payments.
-              Accounts will be kept.
-            </p>
-          </div>
-          <button
-            type="button"
-            onClick={() => setShowReset(true)}
-            className="inline-flex min-h-11 w-full sm:w-auto shrink-0 items-center justify-center gap-2 rounded-xl bg-red-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-red-700 active:bg-red-800"
-          >
-            <Trash2 className="h-4 w-4" aria-hidden="true" />
-            Reset everything
-          </button>
-        </div>
-      </div>
-
-      {/* EXPORT DATA */}
-      <div className="card overflow-hidden">
-        <div className="px-5 py-3 bg-gray-50 dark:bg-zinc-800/50 border-b border-gray-100 dark:border-zinc-800">
-          <h3 className="text-sm font-bold text-gray-700 dark:text-zinc-300 uppercase tracking-widest">
-            Export Data ({selectedAccount?.name})
-          </h3>
-        </div>
-        <div className="divide-y divide-gray-100 dark:divide-zinc-800">
+        <div className="divide-y divide-slate-100 dark:divide-zinc-800">
           <button
             onClick={() => handleExport("csv")}
-            className="w-full flex items-center gap-3 p-4 hover:bg-gray-50 dark:hover:bg-zinc-800/50 transition text-left"
+            disabled={Boolean(busy)}
+            className="row-hover flex w-full items-center gap-3 px-4 py-3.5 text-left disabled:opacity-60 sm:px-5"
           >
-            <div className="w-10 h-10 rounded-full bg-emerald-100 dark:bg-emerald-900/40 text-emerald-600 dark:text-emerald-400 flex items-center justify-center">
-              <Download className="w-5 h-5" />
-            </div>
-            <div>
-              <p className="font-bold text-gray-800 dark:text-zinc-100 text-sm">
-                Export to CSV
-              </p>
-              <p className="text-xs text-gray-500 dark:text-zinc-400">
-                Download entries for Excel / Google Sheets
-              </p>
-            </div>
+            <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-emerald-50 text-emerald-600 dark:bg-emerald-950/40 dark:text-emerald-300">
+              {busy === "csv" ? (
+                <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
+              ) : (
+                <Download className="h-4 w-4" aria-hidden="true" />
+              )}
+            </span>
+            <span className="min-w-0 flex-1">
+              <span className="block text-sm font-semibold text-slate-900 dark:text-white">
+                Export transactions
+              </span>
+              <span className="block text-xs text-slate-500 dark:text-zinc-400">
+                CSV for Excel or Google Sheets
+              </span>
+            </span>
+            <Download className="h-4 w-4 text-slate-300" aria-hidden="true" />
           </button>
 
           <button
             onClick={handleBackup}
-            className="w-full flex items-center gap-3 p-4 hover:bg-gray-50 dark:hover:bg-zinc-800/50 transition text-left"
+            disabled={Boolean(busy)}
+            className="row-hover flex w-full items-center gap-3 px-4 py-3.5 text-left disabled:opacity-60 sm:px-5"
           >
-            <div className="w-10 h-10 rounded-full bg-blue-100 dark:bg-blue-900/40 text-blue-600 dark:text-blue-400 flex items-center justify-center">
-              <FileJson className="w-5 h-5" />
-            </div>
-            <div>
-              <p className="font-bold text-gray-800 dark:text-zinc-100 text-sm">
-                Full JSON Backup
-              </p>
-              <p className="text-xs text-gray-500 dark:text-zinc-400">
-                Download complete account backup
-              </p>
-            </div>
+            <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-sky-50 text-sky-600 dark:bg-sky-950/40 dark:text-sky-300">
+              {busy === "backup" ? (
+                <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
+              ) : (
+                <FileJson className="h-4 w-4" aria-hidden="true" />
+              )}
+            </span>
+            <span className="min-w-0 flex-1">
+              <span className="block text-sm font-semibold text-slate-900 dark:text-white">
+                Full JSON backup
+              </span>
+              <span className="block text-xs text-slate-500 dark:text-zinc-400">
+                Entries, categories and loans in one file
+              </span>
+            </span>
+            <Download className="h-4 w-4 text-slate-300" aria-hidden="true" />
           </button>
         </div>
-      </div>
+      </section>
 
-      {showReset && (
-        <div
-          className="fixed inset-0 z-[100] flex items-end sm:items-center justify-center bg-black/50 p-0 sm:p-4"
-          role="dialog"
-          aria-modal="true"
-          aria-labelledby="reset-title"
-        >
-          <div className="w-full max-h-[90vh] overflow-y-auto rounded-t-2xl sm:rounded-2xl bg-white p-5 pb-safe dark:bg-zinc-900 sm:max-w-md">
-            <div className="flex items-start justify-between gap-4">
-              <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-red-100 text-red-600 dark:bg-red-950/50 dark:text-red-400">
-                <RotateCcw className="h-5 w-5" aria-hidden="true" />
-              </div>
-              <button
-                type="button"
-                onClick={() => setShowReset(false)}
-                className="flex min-h-11 min-w-11 items-center justify-center rounded-xl text-gray-500 hover:bg-gray-100 dark:text-zinc-400 dark:hover:bg-zinc-800"
-                aria-label="Close reset confirmation"
-              >
-                <X className="h-5 w-5" />
-              </button>
-            </div>
-            <h2
-              id="reset-title"
-              className="mt-4 text-xl font-bold text-gray-900 dark:text-white"
-            >
-              Reset the entire app?
-            </h2>
-            <p className="mt-2 text-sm leading-6 text-gray-600 dark:text-zinc-400">
-              This permanently removes all finance records while keeping your
-              accounts. This action cannot be undone.
-            </p>
-            <div className="mt-6 grid grid-cols-1 gap-3 sm:grid-cols-2">
-              <button
-                type="button"
-                onClick={() => setShowReset(false)}
-                disabled={resetting}
-                className="min-h-11 rounded-xl bg-gray-100 px-4 py-3 text-sm font-semibold text-gray-700 hover:bg-gray-200 disabled:opacity-50 dark:bg-zinc-800 dark:text-zinc-200 dark:hover:bg-zinc-700"
-              >
-                Cancel
-              </button>
-              <button
-                type="button"
-                onClick={handleFullReset}
-                disabled={resetting}
-                className="min-h-11 rounded-xl bg-red-600 px-4 py-3 text-sm font-semibold text-white hover:bg-red-700 disabled:cursor-wait disabled:opacity-60"
-              >
-                {resetting ? "Resetting..." : "Delete everything"}
-              </button>
-            </div>
-          </div>
+      {/* Danger zone */}
+      <section className="card overflow-hidden border-rose-200/80 dark:border-rose-950/70">
+        <div className="border-b border-rose-100 bg-rose-50/60 px-4 py-3 dark:border-rose-950/70 dark:bg-rose-950/20 sm:px-5">
+          <h2 className="text-sm font-bold text-rose-700 dark:text-rose-300">
+            Danger zone
+          </h2>
         </div>
-      )}
+        <div className="flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between sm:p-5">
+          <div className="min-w-0">
+            <p className="text-sm font-semibold text-slate-900 dark:text-white">
+              Reset all finance data
+            </p>
+            <p className="mt-1 text-xs leading-5 text-slate-500 dark:text-zinc-400">
+              Deletes entries, categories, loans and recurring payments. Accounts
+              are kept.
+            </p>
+          </div>
+          <button
+            onClick={() => setShowReset(true)}
+            className="btn-danger w-full shrink-0 sm:w-auto"
+          >
+            <Trash2 className="h-4 w-4" aria-hidden="true" />
+            Reset data
+          </button>
+        </div>
+      </section>
+
+      <Sheet
+        open={showReset}
+        onClose={() => setShowReset(false)}
+        size="sm"
+        title="Reset all finance data?"
+        description="This permanently removes every transaction, category and loan. Your accounts are kept. This cannot be undone."
+        footer={
+          <div className="grid grid-cols-2 gap-2">
+            <button
+              onClick={() => setShowReset(false)}
+              disabled={resetting}
+              className="btn-secondary"
+            >
+              Cancel
+            </button>
+            <button
+              onClick={handleFullReset}
+              disabled={resetting}
+              className="btn-danger"
+            >
+              {resetting ? (
+                <>
+                  <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
+                  Resetting…
+                </>
+              ) : (
+                <>
+                  <RotateCcw className="h-4 w-4" aria-hidden="true" />
+                  Delete everything
+                </>
+              )}
+            </button>
+          </div>
+        }
+      >
+        <div className="pb-2" />
+      </Sheet>
     </div>
   );
 }

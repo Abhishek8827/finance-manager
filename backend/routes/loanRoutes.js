@@ -131,6 +131,9 @@ router.put("/:id", async (req, res, next) => {
 router.post("/:id/settle", async (req, res, next) => {
   try {
     const mode = req.body.mode || "online";
+    if (!["cash", "online"].includes(mode)) {
+      return res.status(400).json({ error: "Mode must be cash or online" });
+    }
     const date = req.body.date || todayIST();
 
     const loan = await Loan.findById(req.params.id);

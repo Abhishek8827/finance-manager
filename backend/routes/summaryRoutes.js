@@ -13,6 +13,23 @@ router.get("/", async (req, res, next) => {
     }
 
     const accountId = new mongoose.Types.ObjectId(account);
+    const rawMonth = req.query.month;
+    const rawYear = req.query.year;
+    if (
+      rawMonth !== undefined &&
+      rawMonth !== "all" &&
+      (!/^\d{1,2}$/.test(rawMonth) || Number(rawMonth) < 1 || Number(rawMonth) > 12)
+    ) {
+      return res.status(400).json({ error: "Month must be 1-12 or 'all'" });
+    }
+    if (
+      rawYear !== undefined &&
+      rawYear !== "all" &&
+      (!/^\d{4}$/.test(rawYear) || Number(rawYear) < 1970 || Number(rawYear) > 2200)
+    ) {
+      return res.status(400).json({ error: "Year is out of range" });
+    }
+
     const now = new Date(
       new Date().toLocaleString("en-US", { timeZone: "Asia/Kolkata" }),
     );

@@ -1,13 +1,14 @@
 import { useState, useRef, useEffect } from "react";
 import { Plus, ArrowRightLeft, ReceiptText } from "lucide-react";
+import { cn } from "../lib/utils";
 
 export default function FloatingButton({ onAddClick, onTransferClick }) {
   const [isOpen, setIsOpen] = useState(false);
   const ref = useRef(null);
 
   useEffect(() => {
-    function handleClickOutside(e) {
-      if (ref.current && !ref.current.contains(e.target)) setIsOpen(false);
+    function handleClickOutside(event) {
+      if (ref.current && !ref.current.contains(event.target)) setIsOpen(false);
     }
     document.addEventListener("mousedown", handleClickOutside);
     const handleEscape = (event) => {
@@ -23,6 +24,21 @@ export default function FloatingButton({ onAddClick, onTransferClick }) {
     };
   }, [isOpen]);
 
+  const actions = [
+    {
+      label: "Add entry",
+      icon: ReceiptText,
+      onClick: onAddClick,
+      tone: "bg-emerald-50 text-emerald-600 dark:bg-emerald-950/50 dark:text-emerald-300",
+    },
+    {
+      label: "Transfer",
+      icon: ArrowRightLeft,
+      onClick: onTransferClick,
+      tone: "bg-sky-50 text-sky-600 dark:bg-sky-950/50 dark:text-sky-300",
+    },
+  ];
+
   return (
     <div
       ref={ref}
@@ -36,52 +52,54 @@ export default function FloatingButton({ onAddClick, onTransferClick }) {
           setIsOpen(false);
         }
       }}
-      className="fixed bottom-20 sm:bottom-8 right-4 sm:right-8 z-50"
+      className="fixed bottom-[calc(92px+env(safe-area-inset-bottom))] right-4 z-50 sm:bottom-8 sm:right-8"
     >
       {isOpen && (
         <div
           id="quick-actions-menu"
           aria-label="Quick actions"
-          className="absolute bottom-16 right-0 flex flex-col gap-3 items-end mb-2 animate-fade-in"
+          className="absolute bottom-[68px] right-0 mb-1 flex animate-fade-in flex-col items-end gap-2.5"
         >
-          <button
-            onClick={() => {
-              setIsOpen(false);
-              onAddClick();
-            }}
-            className="flex items-center gap-3 bg-white px-4 py-2.5 rounded-full shadow-card border border-gray-100 text-sm font-semibold text-gray-700 hover:bg-gray-50 transition active:scale-95 whitespace-nowrap"
-          >
-            Add Entry
-            <div className="w-8 h-8 bg-emerald-100 text-emerald-600 rounded-full flex items-center justify-center">
-              <ReceiptText className="w-4 h-4" aria-hidden="true" />
-            </div>
-          </button>
-          <button
-            onClick={() => {
-              setIsOpen(false);
-              onTransferClick();
-            }}
-            className="flex items-center gap-3 bg-white px-4 py-2.5 rounded-full shadow-card border border-gray-100 text-sm font-semibold text-gray-700 hover:bg-gray-50 transition active:scale-95 whitespace-nowrap"
-          >
-            Transfer
-            <div className="w-8 h-8 bg-blue-100 text-blue-600 rounded-full flex items-center justify-center">
-              <ArrowRightLeft className="w-4 h-4" aria-hidden="true" />
-            </div>
-          </button>
+          {actions.map((action) => (
+            <button
+              key={action.label}
+              onClick={() => {
+                setIsOpen(false);
+                action.onClick();
+              }}
+              className="flex items-center gap-3 rounded-full border border-slate-200 bg-white py-2 pl-4 pr-2 text-sm font-semibold text-slate-700 shadow-card transition hover:bg-slate-50 active:scale-95 dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-100 dark:hover:bg-zinc-800"
+            >
+              {action.label}
+              <span
+                className={cn(
+                  "flex h-8 w-8 items-center justify-center rounded-full",
+                  action.tone,
+                )}
+              >
+                <action.icon className="h-4 w-4" aria-hidden="true" />
+              </span>
+            </button>
+          ))}
         </div>
       )}
 
       <button
         type="button"
-        onClick={() => setIsOpen(!isOpen)}
+        onClick={() => setIsOpen((value) => !value)}
         aria-label={isOpen ? "Close quick actions" : "Open quick actions"}
         aria-expanded={isOpen}
         aria-controls="quick-actions-menu"
         data-dialog-return-focus
-        className="w-14 h-14 bg-primary-600 text-white rounded-full shadow-lg shadow-primary-200 flex items-center justify-center hover:bg-primary-700 hover:scale-105 hover:shadow-xl hover:shadow-primary-300 focus-visible:scale-105 transition-all duration-200 active:scale-95"
+        className={cn(
+          "flex h-14 w-14 items-center justify-center rounded-2xl bg-gradient-to-br from-indigo-500 to-violet-600 text-white shadow-float",
+          "transition duration-200 hover:scale-105 active:scale-95",
+        )}
       >
         <Plus
-          className={`w-7 h-7 transition-transform ${isOpen ? "rotate-45" : "rotate-0"}`}
+          className={cn(
+            "h-6 w-6 transition-transform duration-200",
+            isOpen && "rotate-45",
+          )}
           aria-hidden="true"
         />
       </button>

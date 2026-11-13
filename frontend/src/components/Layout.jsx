@@ -1,26 +1,15 @@
 import { lazy, Suspense, useEffect, useState } from "react";
 import { NavLink } from "react-router-dom";
-import Header from "./Header";
+import Header, { NAV_ITEMS } from "./Header";
 import FloatingButton from "./FloatingButton";
+import RouteChrome from "./RouteChrome";
 import API from "../lib/api";
 import { useApp } from "../context/AppContext";
-import {
-  LayoutDashboard,
-  ListOrdered,
-  HandCoins,
-  Settings,
-  StickyNote,
-  Trash2,
-} from "lucide-react";
+import { onQuickActions } from "../lib/quickActions";
+import { cn } from "../lib/utils";
+import { StickyNote, Trash2 } from "lucide-react";
 
 const ModalHost = lazy(() => import("./ModalHost"));
-
-const NAV_ITEMS = [
-  { path: "/", label: "Summary", icon: LayoutDashboard },
-  { path: "/entries", label: "Entries", icon: ListOrdered },
-  { path: "/loans", label: "Loans", icon: HandCoins },
-  { path: "/settings", label: "Settings", icon: Settings },
-];
 
 export default function Layout({ children }) {
   const { selectedAccount } = useApp();
@@ -46,10 +35,6 @@ export default function Layout({ children }) {
     return () => window.clearTimeout(timeout);
   }, [note, noteLoadedAccount, selectedAccount]);
 
-  const clearNote = () => {
-    setNote("");
-  };
-
   const openAdd = () => {
     setModalHostLoaded(true);
     setAddOpen(true);
@@ -59,23 +44,31 @@ export default function Layout({ children }) {
     setTransferOpen(true);
   };
 
+  useEffect(
+    () => onQuickActions({ add: openAdd, transfer: openTransfer }),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [],
+  );
+
   return (
-    <div className="min-h-screen flex flex-col bg-gray-50 dark:bg-neutral-950 transition-colors duration-200 pb-20 sm:pb-0">
+    <div className="flex min-h-screen flex-col bg-slate-50 transition-colors duration-200 dark:bg-zinc-950">
       <a
         href="#main-content"
-        className="sr-only focus:not-sr-only focus:fixed focus:top-2 focus:left-2 focus:z-[100] focus:bg-white focus:px-4 focus:py-2 focus:text-indigo-700 focus:rounded-lg"
+        className="sr-only focus:not-sr-only focus:fixed focus:left-2 focus:top-2 focus:z-[100] focus:rounded-lg focus:bg-white focus:px-4 focus:py-2 focus:text-indigo-700"
       >
         Skip to main content
       </a>
+
       <Header />
+      <RouteChrome />
 
       <aside
-        className="hidden 2xl:block fixed left-5 top-24 z-30 w-64"
+        className="fixed left-5 top-24 z-30 hidden w-64 2xl:block"
         aria-label="Quick note"
       >
-        <div className="card overflow-hidden shadow-lg">
-          <div className="flex items-center justify-between border-b border-gray-100 px-4 py-3 dark:border-zinc-800">
-            <div className="flex items-center gap-2 text-sm font-bold text-gray-700 dark:text-zinc-200">
+        <div className="card overflow-hidden">
+          <div className="card-head py-2.5">
+            <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-widest text-slate-600 dark:text-zinc-300">
               <StickyNote
                 className="h-4 w-4 text-indigo-600 dark:text-indigo-400"
                 aria-hidden="true"
@@ -84,21 +77,27 @@ export default function Layout({ children }) {
             </div>
             <button
               type="button"
-              onClick={clearNote}
+              onClick={() => setNote("")}
               disabled={!note}
-              className="flex min-h-11 items-center gap-1.5 rounded-lg px-2 text-xs font-semibold text-gray-500 hover:bg-gray-100 hover:text-red-600 disabled:cursor-default disabled:opacity-40 dark:text-zinc-400 dark:hover:bg-zinc-800"
+              className="flex items-center gap-1 rounded-lg px-2 py-1 text-[11px] font-semibold text-slate-500 transition hover:bg-slate-100 hover:text-rose-600 disabled:cursor-default disabled:opacity-40 dark:text-zinc-400 dark:hover:bg-zinc-800"
               aria-label="Clear note"
             >
-              <Trash2 className="h-4 w-4" aria-hidden="true" />
+              <Trash2 className="h-3.5 w-3.5" aria-hidden="true" />
               Clear
             </button>
           </div>
           <textarea
             value={note}
             onChange={(event) => setNote(event.target.value)}
-            placeholder="Write a note..."
+            onBlur={() =>
+              selectedAccount?._id &&
+              API.put(`/accounts/${selectedAccount._id}/note`, { note }).catch(
+                () => {},
+              )
+            }
+            placeholder="Jot down a reminder, a bill to pay, or an idea…"
             aria-label="Quick note"
-            className="input min-h-48 resize-y rounded-none border-0 bg-white leading-6 dark:bg-zinc-900"
+            className="min-h-48 w-full resize-y border-0 bg-transparent p-4 text-sm leading-6 text-slate-700 outline-none placeholder:text-slate-400 dark:text-zinc-200 dark:placeholder:text-zinc-500"
           />
         </div>
       </aside>
@@ -106,33 +105,51 @@ export default function Layout({ children }) {
       <main
         id="main-content"
         tabIndex={-1}
-        className="flex-1 w-full max-w-6xl mx-auto p-4 sm:p-6"
+        className="mx-auto w-full max-w-6xl flex-1 px-4 pb-28 pt-5 outline-none sm:px-6 sm:pb-12 sm:pt-6"
       >
         {children}
+        <p className="mt-10 hidden text-center text-[11px] text-slate-400 dark:text-zinc-600 sm:block">
+          Finance Manager · private ledger for {selectedAccount?.name || "you"}
+        </p>
       </main>
 
-      {/* Mobile Bottom Navigation */}
       <nav
         aria-label="Mobile navigation"
-        className="sm:hidden fixed bottom-0 inset-x-0 glass border-t border-gray-200 dark:border-neutral-800 z-40 pb-safe"
+        className="pb-safe fixed inset-x-0 bottom-0 z-40 border-t border-slate-200/80 bg-white/90 backdrop-blur-xl dark:border-zinc-800/80 dark:bg-zinc-950/90 sm:hidden"
       >
-        <div className="flex items-center justify-around h-16">
+        <div className="mx-auto flex h-[68px] max-w-md items-stretch justify-around px-2">
           {NAV_ITEMS.map((item) => (
             <NavLink
               key={item.path}
               to={item.path}
+              end={item.path === "/"}
               className={({ isActive }) =>
-                `flex flex-col items-center justify-center w-full h-full gap-1 transition-colors ${isActive ? "text-indigo-600 dark:text-indigo-400" : "text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"}`
+                cn(
+                  "flex flex-1 flex-col items-center justify-center gap-0.5 rounded-xl text-[10px] font-semibold transition-colors",
+                  isActive
+                    ? "text-indigo-600 dark:text-indigo-400"
+                    : "text-slate-500 hover:text-slate-800 dark:text-zinc-500 dark:hover:text-zinc-200",
+                )
               }
             >
-              <item.icon className="w-5 h-5" />
-              <span className="text-[10px] font-medium">{item.label}</span>
+              {({ isActive }) => (
+                <>
+                  <span
+                    className={cn(
+                      "flex h-7 w-12 items-center justify-center rounded-full transition-colors",
+                      isActive && "bg-indigo-50 dark:bg-indigo-950/60",
+                    )}
+                  >
+                    <item.icon className="h-[18px] w-[18px]" aria-hidden="true" />
+                  </span>
+                  {item.label}
+                </>
+              )}
             </NavLink>
           ))}
         </div>
       </nav>
 
-      {/* FAB & Modals */}
       <FloatingButton onAddClick={openAdd} onTransferClick={openTransfer} />
 
       {modalHostLoaded && (
