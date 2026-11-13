@@ -7,6 +7,7 @@ A personal finance tracker with a React frontend and an Express API backed by Mo
 - Track income, expenses, accounts, and transfers
 - Manage loans and review financial summaries
 - Configure transaction categories and account settings
+- Export transactions to CSV and download full JSON backups
 - Installable progressive web app frontend
 
 ## Requirements

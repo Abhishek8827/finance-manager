@@ -5,29 +5,46 @@ export default {
   theme: {
     extend: {
       fontFamily: {
-        sans: ["Inter", "system-ui", "-apple-system", "sans-serif"],
+        sans: [
+          "Inter",
+          "ui-sans-serif",
+          "system-ui",
+          "-apple-system",
+          "Segoe UI",
+          "sans-serif",
+        ],
       },
       colors: {
         primary: {
           50: "#eef2ff",
           100: "#e0e7ff",
+          200: "#c7d2fe",
+          300: "#a5b4fc",
+          400: "#818cf8",
           500: "#6366f1",
           600: "#4f46e5",
           700: "#4338ca",
+          800: "#3730a3",
           900: "#312e81",
         },
+        income: "#059669",
+        expense: "#e11d48",
+        cash: "#d97706",
+        online: "#0284c7",
       },
       borderRadius: {
         xl: "0.875rem",
         "2xl": "1.25rem",
+        "3xl": "1.75rem",
       },
       boxShadow: {
-        soft: "0 2px 8px -1px rgba(0, 0, 0, 0.05)",
-        card: "0 4px 20px -4px rgba(0, 0, 0, 0.06)",
+        soft: "0 1px 2px 0 rgb(15 23 42 / 0.04), 0 1px 3px 0 rgb(15 23 42 / 0.06)",
+        card: "0 10px 30px -12px rgb(15 23 42 / 0.16)",
+        float: "0 18px 40px -16px rgb(79 70 229 / 0.45)",
       },
       animation: {
         "slide-up": "slideUp 0.3s ease-out",
-        "fade-in": "fadeIn 0.2s ease-out",
+        "fade-in": "fadeIn 0.25s ease-out",
       },
       keyframes: {
         slideUp: {

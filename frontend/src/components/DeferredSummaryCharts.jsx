@@ -4,13 +4,13 @@ const SummaryCharts = lazy(() => import("./SummaryCharts"));
 
 function ChartPlaceholder() {
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-      {["Expenses by Category", "6-Month Trend"].map((title) => (
-        <div className="card p-5" key={title}>
-          <h3 className="text-sm font-bold text-gray-800 dark:text-gray-200 mb-4">
+    <div className="grid grid-cols-1 gap-5 lg:grid-cols-2">
+      {["Spending by category", "Income vs spending"].map((title) => (
+        <div className="card card-body" key={title}>
+          <h3 className="mb-4 text-sm font-bold text-slate-900 dark:text-white">
             {title}
           </h3>
-          <div className="h-60 animate-pulse rounded-xl bg-gray-100 dark:bg-neutral-800" />
+          <div className="skeleton h-56 w-full rounded-xl" aria-hidden="true" />
         </div>
       ))}
     </div>
@@ -38,7 +38,7 @@ export default function DeferredSummaryCharts(props) {
           observer.disconnect();
         }
       },
-      { rootMargin: "200px 0px" },
+      { rootMargin: "240px 0px" },
     );
 
     observer.observe(container);

@@ -1,27 +1,55 @@
-import { useState, useMemo } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   useInfiniteQuery,
   useMutation,
   useQueryClient,
 } from "@tanstack/react-query";
 import { format, parseISO } from "date-fns";
-import { Filter, Trash2, Edit2 } from "lucide-react";
+import { Loader2, Plus, Receipt, Search, X } from "lucide-react";
 import { toast } from "sonner";
 import API from "../lib/api";
 import { formatPaise, friendlyDate, cn } from "../lib/utils";
 import { useApp } from "../context/AppContext";
 import AddEntryModal from "../components/AddEntryModal";
 import TransferModal from "../components/TransferModal";
+import EntryRow, { entryMeta } from "../components/EntryRow";
+import EmptyState from "../components/ui/EmptyState";
+import { EntryListSkeleton } from "../components/ui/Skeleton";
+import { openAddEntry } from "../lib/quickActions";
+
+const TABS = [
+  { value: "all", label: "All" },
+  { value: "income", label: "Income" },
+  { value: "expense", label: "Expense" },
+  { value: "transfer", label: "Transfers" },
+];
 
 export default function Entries() {
   const { selectedAccount } = useApp();
   const queryClient = useQueryClient();
   const [tab, setTab] = useState("all");
-  const [showFilters, setShowFilters] = useState(false);
+  const [searchInput, setSearchInput] = useState("");
   const [search, setSearch] = useState("");
   const [editItem, setEditItem] = useState(null);
   const [showEntryModal, setShowEntryModal] = useState(false);
   const [showTransferModal, setShowTransferModal] = useState(false);
+  const searchRef = useRef(null);
+
+  useEffect(() => {
+    const timeout = window.setTimeout(() => setSearch(searchInput.trim()), 300);
+    return () => window.clearTimeout(timeout);
+  }, [searchInput]);
+
+  useEffect(() => {
+    const handleShortcut = (event) => {
+      if (event.key === "/" && !/input|textarea|select/i.test(event.target.tagName)) {
+        event.preventDefault();
+        searchRef.current?.focus();
+      }
+    };
+    window.addEventListener("keydown", handleShortcut);
+    return () => window.removeEventListener("keydown", handleShortcut);
+  }, []);
 
   const fetchEntries = async ({ pageParam = null }) => {
     let url = `/entries?account=${selectedAccount._id}&limit=30`;
@@ -31,23 +59,32 @@ export default function Entries() {
     return API.get(url);
   };
 
-  const { data, fetchNextPage, hasNextPage, isFetchingNextPage, isLoading } =
-    useInfiniteQuery({
-      queryKey: ["entries", selectedAccount?._id, tab, search],
-      queryFn: fetchEntries,
-      getNextPageParam: (lastPage) => lastPage.nextCursor,
-      enabled: !!selectedAccount?._id,
-    });
+  const {
+    data,
+    fetchNextPage,
+    hasNextPage,
+    isFetchingNextPage,
+    isLoading,
+    isError,
+    error,
+    refetch,
+  } = useInfiniteQuery({
+    queryKey: ["entries", selectedAccount?._id, tab, search],
+    queryFn: fetchEntries,
+    getNextPageParam: (lastPage) => lastPage.nextCursor,
+    enabled: !!selectedAccount?._id,
+  });
 
   const deleteMutation = useMutation({
     mutationFn: (id) => API.delete(`/entries/${id}`),
     onSuccess: (_, id) => {
       queryClient.invalidateQueries({ queryKey: ["entries"] });
       queryClient.invalidateQueries({ queryKey: ["summary"] });
-      toast.success("Deleted", {
+      toast.success("Entry deleted", {
         action: { label: "Undo", onClick: () => restoreMutation.mutate(id) },
       });
     },
+    onError: (mutationError) => toast.error(mutationError.message),
   });
 
   const restoreMutation = useMutation({
@@ -55,214 +92,247 @@ export default function Entries() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["entries"] });
       queryClient.invalidateQueries({ queryKey: ["summary"] });
-      toast.success("Restored");
+      toast.success("Entry restored");
     },
+    onError: (mutationError) => toast.error(mutationError.message),
   });
 
   const entries = useMemo(
-    () => data?.pages.flatMap((p) => p.items) || [],
+    () => data?.pages.flatMap((page) => page.items) || [],
     [data],
   );
 
   const grouped = useMemo(() => {
-    return entries.reduce((acc, entry) => {
-      const d = entry.date;
-      if (!acc[d]) acc[d] = [];
-      acc[d].push(entry);
-      return acc;
+    return entries.reduce((accumulator, entry) => {
+      if (!accumulator[entry.date]) accumulator[entry.date] = [];
+      accumulator[entry.date].push(entry);
+      return accumulator;
     }, {});
   }, [entries]);
 
-  const handleEdit = (entry) => {
+  const totals = useMemo(
+    () =>
+      entries.reduce(
+        (accumulator, entry) => {
+          const { isIncoming, isTransfer } = entryMeta(entry);
+          if (isTransfer) return accumulator;
+          if (isIncoming) accumulator.in += entry.amountPaise;
+          else accumulator.out += entry.amountPaise;
+          return accumulator;
+        },
+        { in: 0, out: 0 },
+      ),
+    [entries],
+  );
+
+  const openEdit = (entry) => {
+    if (entry.type === "loan") {
+      toast.info("Manage loan entries from the Loans page.");
+      return;
+    }
+    if (entry.type === "transfer") {
+      const counterId =
+        entry.transferToAccount?._id || entry.transferToAccount;
+      if (
+        !entry.isOutgoing &&
+        counterId &&
+        String(counterId) !== String(selectedAccount?._id)
+      ) {
+        toast.info(
+          "This money came from another account — edit the transfer there.",
+        );
+        return;
+      }
+    }
     setEditItem(entry);
     if (entry.type === "transfer") setShowTransferModal(true);
     else setShowEntryModal(true);
   };
 
+  const isFiltering = tab !== "all" || Boolean(search);
+
   return (
-    <div className="space-y-4 pb-20">
-      {/* Sticky header */}
-      <div className="sticky top-16 z-30 -mx-4 px-4 sm:mx-0 sm:px-0 pb-3 pt-1 bg-gray-50/95 dark:bg-zinc-950/95 backdrop-blur-md">
-        <div className="flex items-center justify-between mb-3">
-          <h2 className="text-2xl font-bold text-gray-900 dark:text-white tracking-tight">
-            Timeline
-          </h2>
-          <button
-            onClick={() => setShowFilters(!showFilters)}
-            aria-label={showFilters ? "Hide entry filters" : "Show entry filters"}
-            aria-expanded={showFilters}
-            aria-controls="entry-filters"
-            className={cn(
-              "p-2.5 rounded-xl transition border",
-              showFilters || search
-                ? "bg-indigo-100 dark:bg-indigo-900/40 text-indigo-600 dark:text-indigo-300 border-indigo-200 dark:border-indigo-800"
-                : "bg-white dark:bg-zinc-900 text-gray-600 dark:text-zinc-300 border-gray-200 dark:border-zinc-800 shadow-sm",
-            )}
-          >
-            <Filter className="w-5 h-5" />
-          </button>
+    <div className="space-y-4 pb-4">
+      <div className="flex flex-wrap items-end justify-between gap-3">
+        <div>
+          <p className="section-label">Activity</p>
+          <h1 className="page-title mt-1">Transactions</h1>
+        </div>
+        <button onClick={openAddEntry} className="btn-primary btn-sm">
+          <Plus className="h-4 w-4" aria-hidden="true" />
+          Add entry
+        </button>
+      </div>
+
+      {/* Search + filters */}
+      <div className="sticky top-16 z-30 -mx-4 space-y-2.5 border-b border-slate-200/60 bg-slate-50/95 px-4 pb-3 pt-1 backdrop-blur-md dark:border-zinc-800/60 dark:bg-zinc-950/95 sm:mx-0 sm:rounded-2xl sm:border-0 sm:px-0">
+        <div className="relative">
+          <Search
+            className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400"
+            aria-hidden="true"
+          />
+          <input
+            ref={searchRef}
+            type="search"
+            aria-label="Search entries by note"
+            placeholder="Search notes…   (press /)"
+            value={searchInput}
+            onChange={(event) => setSearchInput(event.target.value)}
+            className="input pl-9 pr-9"
+          />
+          {searchInput && (
+            <button
+              onClick={() => setSearchInput("")}
+              aria-label="Clear search"
+              className="absolute right-2 top-1/2 flex h-7 w-7 -translate-y-1/2 items-center justify-center rounded-lg text-slate-400 hover:bg-slate-100 hover:text-slate-600 dark:hover:bg-zinc-800"
+            >
+              <X className="h-4 w-4" aria-hidden="true" />
+            </button>
+          )}
         </div>
 
-        <div className="flex bg-gray-200/70 dark:bg-zinc-800/80 p-1 rounded-xl w-full">
-          {["all", "income", "expense", "transfer"].map((t) => (
+        <div className="scrollbar-none -mx-1 flex gap-1.5 overflow-x-auto px-1 pb-0.5">
+          {TABS.map((option) => (
             <button
-              key={t}
-              onClick={() => setTab(t)}
-              aria-pressed={tab === t}
-              className={cn(
-                "flex-1 py-1.5 text-xs font-bold uppercase tracking-wider rounded-lg transition-all",
-                tab === t
-                  ? "bg-white dark:bg-zinc-700 text-gray-900 dark:text-white shadow-sm"
-                  : "text-gray-500 dark:text-zinc-400 hover:text-gray-700 dark:hover:text-zinc-200",
-              )}
+              key={option.value}
+              onClick={() => setTab(option.value)}
+              aria-pressed={tab === option.value}
+              className="chip"
             >
-              {t}
+              {option.label}
             </button>
           ))}
         </div>
-
-        {showFilters && (
-          <div id="entry-filters" className="mt-3">
-            <input
-              type="text"
-              aria-label="Search entries"
-              placeholder="Search entries..."
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              className="input"
-            />
-          </div>
-        )}
       </div>
 
       {isLoading ? (
-        <div className="flex justify-center p-10">
-          <div className="animate-spin w-8 h-8 border-4 border-indigo-600 border-t-transparent rounded-full" />
+        <EntryListSkeleton rows={6} />
+      ) : isError ? (
+        <div className="card card-body text-center">
+          <p className="text-sm font-semibold text-slate-900 dark:text-white">
+            Couldn’t load transactions
+          </p>
+          <p className="mt-1 text-sm text-slate-500 dark:text-zinc-400">
+            {error?.message}
+          </p>
+          <button onClick={() => refetch()} className="btn-primary btn-sm mx-auto mt-4">
+            Try again
+          </button>
         </div>
       ) : entries.length === 0 ? (
-        <div className="text-center p-10 text-gray-500 dark:text-zinc-400 bg-white dark:bg-zinc-900 rounded-2xl border border-dashed border-gray-200 dark:border-zinc-800">
-          No entries found.
+        <div className="card">
+          <EmptyState
+            icon={isFiltering ? Search : Receipt}
+            title={isFiltering ? "No matching entries" : "No entries yet"}
+            description={
+              isFiltering
+                ? "Try a different search term or clear the filters to see everything."
+                : "Every income and expense you add will appear here, grouped by day."
+            }
+            action={
+              isFiltering ? (
+                <button
+                  onClick={() => {
+                    setTab("all");
+                    setSearchInput("");
+                  }}
+                  className="btn-secondary"
+                >
+                  Clear filters
+                </button>
+              ) : (
+                <button onClick={openAddEntry} className="btn-primary">
+                  <Plus className="h-4 w-4" aria-hidden="true" />
+                  Add your first entry
+                </button>
+              )
+            }
+          />
         </div>
       ) : (
-        <div className="space-y-6">
-          {Object.entries(grouped).map(([dateStr, items]) => (
-            <div key={dateStr} className="space-y-2">
-              <h3 className="text-xs font-bold text-gray-500 dark:text-zinc-400 uppercase tracking-widest pl-2">
-                {friendlyDate(dateStr)}{" "}
-                <span className="font-normal lowercase ml-1">
-                  ({format(parseISO(dateStr), "dd MMM yyyy")})
-                </span>
-              </h3>
+        <>
+          <div className="flex flex-wrap items-center justify-between gap-2 px-1 text-[11px] font-medium text-slate-500 dark:text-zinc-400">
+            <span>
+              {entries.length}
+              {hasNextPage ? "+" : ""} {entries.length === 1 ? "entry" : "entries"}
+              {search && ` matching “${search}”`}
+            </span>
+            <span className={cn("flex items-center gap-3", tab === "transfer" && "hidden")}>
+              <span className="flex items-center gap-1">
+                <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
+                In {formatPaise(totals.in)}
+              </span>
+              <span className="flex items-center gap-1">
+                <span className="h-1.5 w-1.5 rounded-full bg-rose-500" />
+                Out {formatPaise(totals.out)}
+              </span>
+            </span>
+          </div>
 
-              <div className="card overflow-hidden divide-y divide-gray-100 dark:divide-zinc-800">
-                {items.map((entry) => {
-                  const isTransfer = entry.type === "transfer";
-                  let title = entry.head?.name || "Uncategorized";
-                  if (isTransfer) {
-                    const counterName = entry.transferToAccount?.name || "Self";
-                    title = entry.isOutgoing
-                      ? `To ${counterName}`
-                      : `From ${counterName}`;
-                  }
+          <div className="space-y-5">
+            {Object.entries(grouped).map(([dateStr, items]) => {
+              const dayNet = items.reduce((sum, entry) => {
+                const { isIncoming, isTransfer } = entryMeta(entry);
+                if (isTransfer) return sum;
+                return sum + (isIncoming ? entry.amountPaise : -entry.amountPaise);
+              }, 0);
 
-                  return (
-                    <div
-                      key={entry._id}
-                      className="p-4 flex items-center justify-between hover:bg-gray-50 dark:hover:bg-zinc-800/50 transition group"
+              return (
+                <section key={dateStr} aria-label={friendlyDate(dateStr)}>
+                  <div className="mb-1.5 flex items-baseline justify-between px-1">
+                    <h2 className="text-xs font-bold uppercase tracking-widest text-slate-500 dark:text-zinc-400">
+                      {friendlyDate(dateStr)}
+                      <span className="ml-1.5 font-medium normal-case tracking-normal text-slate-400 dark:text-zinc-500">
+                        {format(parseISO(dateStr), "d MMM yyyy")}
+                      </span>
+                    </h2>
+                    <span
+                      className={cn(
+                        "money text-[11px] font-bold",
+                        dayNet >= 0
+                          ? "text-emerald-600 dark:text-emerald-400"
+                          : "text-slate-500 dark:text-zinc-400",
+                      )}
                     >
-                      <div className="flex items-center gap-4 min-w-0">
-                        <div
-                          className={cn(
-                            "w-10 h-10 rounded-full flex items-center justify-center text-lg flex-shrink-0",
-                            isTransfer
-                              ? "bg-blue-100 dark:bg-blue-900/40 text-blue-600 dark:text-blue-300"
-                              : entry.type === "income"
-                                ? "bg-emerald-100 dark:bg-emerald-900/40 text-emerald-600 dark:text-emerald-300"
-                                : "bg-red-100 dark:bg-red-900/40 text-red-600 dark:text-red-300",
-                          )}
-                        >
-                          {isTransfer
-                            ? "⇄"
-                            : entry.head?.emoji ||
-                              (entry.type === "income" ? "↗" : "↘")}
-                        </div>
-                        <div className="min-w-0">
-                          <p className="font-semibold text-gray-900 dark:text-zinc-100 text-sm truncate">
-                            {title}
-                          </p>
-                          {entry.summary && (
-                            <p className="text-xs text-gray-500 dark:text-zinc-400 truncate">
-                              {entry.summary}
-                            </p>
-                          )}
-                          <div className="flex items-center gap-1 mt-1">
-                            <span
-                              className={cn(
-                                "text-[9px] font-bold px-1.5 py-0.5 rounded",
-                                entry.mode === "cash"
-                                  ? "bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-300"
-                                  : "bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300",
-                              )}
-                            >
-                              {entry.mode === "cash" ? "CASH" : "ONLINE"}
-                            </span>
-                          </div>
-                        </div>
-                      </div>
+                      {dayNet >= 0 ? "+" : "−"}
+                      {formatPaise(Math.abs(dayNet))}
+                    </span>
+                  </div>
 
-                      <div className="flex flex-col items-end shrink-0 pl-2">
-                        <span
-                          className={cn(
-                            "font-bold text-sm",
-                            isTransfer
-                              ? entry.isOutgoing
-                                ? "text-gray-900 dark:text-zinc-100"
-                                : "text-emerald-600 dark:text-emerald-400"
-                              : entry.type === "income"
-                                ? "text-emerald-600 dark:text-emerald-400"
-                                : "text-red-600 dark:text-red-400",
-                          )}
-                        >
-                          {(entry.type === "expense" ||
-                          (isTransfer && entry.isOutgoing)
-                            ? "-"
-                            : "+") + formatPaise(entry.amountPaise)}
-                        </span>
-
-                        <div className="flex items-center gap-1 mt-1 opacity-100 sm:opacity-0 group-hover:opacity-100 transition-opacity">
-                          <button
-                            onClick={() => handleEdit(entry)}
-                            aria-label={`Edit ${title}`}
-                            className="p-1.5 text-gray-400 hover:text-indigo-600 dark:hover:text-indigo-400 bg-gray-100 dark:bg-zinc-800 hover:bg-indigo-50 dark:hover:bg-indigo-900/30 rounded-md"
-                          >
-                            <Edit2 className="w-3.5 h-3.5" />
-                          </button>
-                          <button
-                            onClick={() => deleteMutation.mutate(entry._id)}
-                            aria-label={`Delete ${title}`}
-                            className="p-1.5 text-gray-400 hover:text-red-600 dark:hover:text-red-400 bg-gray-100 dark:bg-zinc-800 hover:bg-red-50 dark:hover:bg-red-900/30 rounded-md"
-                          >
-                            <Trash2 className="w-3.5 h-3.5" />
-                          </button>
-                        </div>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-          ))}
+                  <div className="card divide-y divide-slate-100 overflow-hidden dark:divide-zinc-800">
+                    {items.map((entry) => (
+                      <EntryRow
+                        key={entry._id}
+                        entry={entry}
+                        showActions
+                        readOnly={entry.type === "loan"}
+                        onEdit={openEdit}
+                        onDelete={(item) => deleteMutation.mutate(item._id)}
+                      />
+                    ))}
+                  </div>
+                </section>
+              );
+            })}
+          </div>
 
           {hasNextPage && (
             <button
               onClick={() => fetchNextPage()}
               disabled={isFetchingNextPage}
-              className="w-full py-3 bg-white dark:bg-zinc-900 border border-gray-200 dark:border-zinc-800 rounded-2xl text-sm font-semibold text-gray-600 dark:text-zinc-300 hover:bg-gray-50 dark:hover:bg-zinc-800 active:scale-[0.98] transition"
+              className="btn-secondary w-full"
             >
-              {isFetchingNextPage ? "Loading..." : "Load More Entries"}
+              {isFetchingNextPage ? (
+                <>
+                  <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
+                  Loading…
+                </>
+              ) : (
+                "Load more entries"
+              )}
             </button>
           )}
-        </div>
+        </>
       )}
 
       {showEntryModal && (

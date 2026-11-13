@@ -4,6 +4,7 @@ const { randomUUID } = require("crypto");
 const mongoose = require("mongoose");
 const Entry = require("../models/Entry");
 const { rupeesToPaise } = require("../utils/money");
+const { escapeRegex } = require("../utils/regex");
 
 const router = express.Router();
 
@@ -56,10 +57,21 @@ router.get("/", async (req, res, next) => {
       if (from) q.date.$gte = from;
       if (to) q.date.$lte = to;
     }
-    if (search) q.summary = { $regex: search, $options: "i" };
+    if (search) {
+      q.summary = {
+        $regex: escapeRegex(String(search).slice(0, 100)),
+        $options: "i",
+      };
+    }
 
     if (cursor) {
       const [cDate, cId] = cursor.split("|");
+      if (
+        !/^\d{4}-\d{2}-\d{2}$/.test(cDate || "") ||
+        !mongoose.Types.ObjectId.isValid(cId || "")
+      ) {
+        return res.status(400).json({ error: "Invalid pagination cursor" });
+      }
       q.$or = [
         { date: { $lt: cDate } },
         { date: cDate, _id: { $lt: new mongoose.Types.ObjectId(cId) } },
@@ -141,6 +153,60 @@ router.post("/transfer", async (req, res, next) => {
 
     const created = await Entry.insertMany(docs);
     res.status(201).json({ transferId, entries: created });
+  } catch (e) {
+    next(e);
+  }
+});
+
+router.put("/transfer/:id", async (req, res, next) => {
+  try {
+    const p = transferSchema.parse(req.body);
+
+    const entry = await Entry.findOne({
+      _id: req.params.id,
+      type: "transfer",
+      deletedAt: null,
+    });
+    if (!entry) return res.status(404).json({ error: "Transfer not found" });
+    if (!entry.transferId) {
+      return res.status(400).json({ error: "Transfer is missing its pair" });
+    }
+
+    const legs = await Entry.find({
+      transferId: entry.transferId,
+      type: "transfer",
+      deletedAt: null,
+    });
+    const outgoing = legs.find((leg) => leg.isOutgoing);
+    const incoming = legs.find((leg) => !leg.isOutgoing);
+    if (!outgoing || !incoming) {
+      return res
+        .status(409)
+        .json({ error: "This transfer is incomplete and can’t be edited" });
+    }
+
+    const amountPaise = rupeesToPaise(p.amount);
+    const summary = p.summary || "";
+
+    outgoing.account = p.fromAccount;
+    outgoing.mode = p.fromMode;
+    outgoing.transferToAccount = p.toAccount;
+    outgoing.transferToMode = p.toMode;
+    outgoing.amountPaise = amountPaise;
+    outgoing.date = p.date;
+    outgoing.summary = summary;
+
+    incoming.account = p.toAccount;
+    incoming.mode = p.toMode;
+    incoming.transferToAccount = p.fromAccount;
+    incoming.transferToMode = p.fromMode;
+    incoming.amountPaise = amountPaise;
+    incoming.date = p.date;
+    incoming.summary = summary;
+
+    await Promise.all([outgoing.save(), incoming.save()]);
+
+    res.json({ transferId: entry.transferId, entries: [outgoing, incoming] });
   } catch (e) {
     next(e);
   }

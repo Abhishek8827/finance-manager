@@ -1,13 +1,41 @@
-import { useState, useEffect } from "react";
-import { motion } from "framer-motion";
-import { X, Plus } from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
+import {
+  Banknote,
+  Check,
+  Plus,
+  Smartphone,
+  Tag,
+  Trash2,
+  TrendingDown,
+  TrendingUp,
+  X,
+} from "lucide-react";
 import { toast } from "sonner";
 import API from "../lib/api";
-import { todayYMD } from "../lib/utils";
+import { todayYMD, cn } from "../lib/utils";
 import { useHeads, useInvalidateData } from "../hooks/useData";
 import { useApp } from "../context/AppContext";
 import { useQueryClient } from "@tanstack/react-query";
-import useDialogAccessibility from "../hooks/useDialogAccessibility";
+import Sheet from "./ui/Sheet";
+import Segmented from "./ui/Segmented";
+
+const TYPE_OPTIONS = [
+  { value: "expense", label: "Expense", icon: TrendingDown },
+  { value: "income", label: "Income", icon: TrendingUp },
+];
+
+const MODE_OPTIONS = [
+  { value: "cash", label: "Cash", icon: Banknote },
+  { value: "online", label: "Online", icon: Smartphone },
+];
+
+const QUICK_AMOUNTS = [100, 500, 1000, 5000];
+
+function yesterdayYMD() {
+  const date = new Date();
+  date.setDate(date.getDate() - 1);
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
+}
 
 export default function AddEntryModal({ isOpen, onClose, editEntry = null }) {
   const { selectedAccount } = useApp();
@@ -18,45 +46,56 @@ export default function AddEntryModal({ isOpen, onClose, editEntry = null }) {
   const [headId, setHeadId] = useState("");
   const [summary, setSummary] = useState("");
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
 
   const [showNewHead, setShowNewHead] = useState(false);
   const [newHeadName, setNewHeadName] = useState("");
-  const dialogRef = useDialogAccessibility(isOpen, onClose);
 
   const { data: heads = [] } = useHeads();
   const invalidateData = useInvalidateData();
   const queryClient = useQueryClient();
 
-  const filteredHeads = heads.filter((h) => h.type === type && !h.archived);
+  const filteredHeads = useMemo(
+    () => heads.filter((head) => head.type === type && !head.archived),
+    [heads, type],
+  );
 
-  // Pre-fill fields when editing OR reset when adding new
   useEffect(() => {
-    if (isOpen) {
-      if (editEntry) {
-        setType(editEntry.type || "expense");
-        setMode(editEntry.mode || "cash");
-
-        // Handle both paise and rupee values safely
-        const rawAmt =
-          editEntry.amountPaise !== undefined
-            ? editEntry.amountPaise / 100
-            : editEntry.amount || "";
-        setAmount(String(rawAmt));
-
-        setDate(editEntry.date || todayYMD());
-        setHeadId(editEntry.head?._id || editEntry.head || "");
-        setSummary(editEntry.summary || "");
-      } else {
-        setAmount("");
-        setSummary("");
-        setDate(todayYMD());
-        setHeadId("");
-        setType("expense");
-        setMode("cash");
-      }
-      setShowNewHead(false);
+    if (!isOpen) return;
+    if (editEntry) {
+      setType(editEntry.type || "expense");
+      setMode(editEntry.mode || "cash");
+      const rawAmount =
+        editEntry.amountPaise !== undefined
+          ? editEntry.amountPaise / 100
+          : editEntry.amount || "";
+      setAmount(String(rawAmount));
+      setDate(editEntry.date || todayYMD());
+      setHeadId(editEntry.head?._id || editEntry.head || "");
+      setSummary(editEntry.summary || "");
+    } else {
+      setAmount("");
+      setSummary("");
+      setDate(todayYMD());
+      setHeadId("");
+      setType("expense");
+      setMode("cash");
     }
+    setError("");
+    setShowNewHead(false);
+    setNewHeadName("");
   }, [isOpen, editEntry]);
+
+  useEffect(() => {
+    if (!headId) return;
+    const selected = heads.find((head) => head._id === headId);
+    if (selected && selected.type !== type) setHeadId("");
+  }, [type, headId, heads]);
+
+  const changeType = (nextType) => {
+    setType(nextType);
+    setError("");
+  };
 
   const handleCreateHead = async () => {
     if (!newHeadName.trim()) return;
@@ -78,286 +117,324 @@ export default function AddEntryModal({ isOpen, onClose, editEntry = null }) {
     }
   };
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    if (!amount || parseFloat(amount) <= 0)
-      return toast.error("Enter a valid amount");
-    if (!headId) return toast.error("Select a category");
+  const handleSubmit = async (event) => {
+    event.preventDefault();
+    const parsed = parseFloat(amount);
+    if (!amount || Number.isNaN(parsed) || parsed <= 0) {
+      setError("Enter an amount greater than zero.");
+      return;
+    }
+    if (!headId) {
+      setError("Pick a category for this entry.");
+      return;
+    }
 
     setLoading(true);
+    setError("");
     try {
       const payload = {
         account: selectedAccount._id,
         type,
         mode,
         date,
-        amount: parseFloat(amount),
+        amount: parsed,
         head: headId,
         summary,
       };
 
       if (editEntry) {
         await API.put(`/entries/${editEntry._id}`, payload);
-        toast.success("Entry updated successfully!");
+        toast.success("Entry updated");
       } else {
         await API.post("/entries", payload);
-        toast.success("Entry added successfully!");
+        toast.success(
+          `${type === "income" ? "Income" : "Expense"} of ₹${parsed.toLocaleString("en-IN")} saved`,
+        );
       }
 
       invalidateData();
       onClose();
     } catch (e) {
-      toast.error(e.message);
+      setError(e.message);
     } finally {
       setLoading(false);
     }
   };
 
-  if (!isOpen) return null;
+  const isIncome = type === "income";
+  const accent = isIncome
+    ? "text-emerald-600 dark:text-emerald-400"
+    : "text-rose-600 dark:text-rose-400";
 
   return (
-    <div className="fixed inset-0 z-[60] flex items-end sm:items-center justify-center">
-      <motion.div
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        exit={{ opacity: 0 }}
-        className="absolute inset-0 bg-black/40 backdrop-blur-sm"
-        onClick={onClose}
-      />
-
-      <motion.div
-        ref={dialogRef}
-        role="dialog"
-        aria-modal="true"
-        aria-label={`${editEntry ? "Edit" : "New"} ${type} entry`}
-        tabIndex={-1}
-        initial={{ y: "100%" }}
-        animate={{ y: 0 }}
-        exit={{ y: "100%" }}
-        transition={{ type: "spring", damping: 25, stiffness: 200 }}
-        className="relative bg-white dark:bg-zinc-900 w-full sm:max-w-md rounded-t-3xl sm:rounded-3xl shadow-2xl flex flex-col max-h-[90vh]"
-      >
-        <div className="flex items-center justify-between p-5 border-b border-gray-100 dark:border-zinc-800">
-          <div className="flex bg-gray-100 dark:bg-zinc-800 p-1 rounded-xl">
-            <button
-              type="button"
-              onClick={() => setType("expense")}
-              aria-pressed={type === "expense"}
-              className={`px-4 py-1.5 rounded-lg text-sm font-semibold transition ${
-                type === "expense"
-                  ? "bg-red-700 text-white shadow-sm"
-                  : "text-gray-600 dark:text-zinc-400"
-              }`}
-            >
-              Expense
-            </button>
-            <button
-              type="button"
-              onClick={() => setType("income")}
-              aria-pressed={type === "income"}
-              className={`px-4 py-1.5 rounded-lg text-sm font-semibold transition ${
-                type === "income"
-                  ? "bg-emerald-700 text-white shadow-sm"
-                  : "text-gray-600 dark:text-zinc-400"
-              }`}
-            >
-              Income
-            </button>
-          </div>
-          <button
-            type="button"
-            onClick={onClose}
-            aria-label="Close entry dialog"
-            className="p-2 bg-gray-100 dark:bg-zinc-800 rounded-full text-gray-500 dark:text-zinc-400 hover:bg-gray-200 dark:hover:bg-zinc-700"
-          >
-            <X className="w-5 h-5" aria-hidden="true" />
-          </button>
-        </div>
-
-        <div className="overflow-y-auto p-5">
-          <form id="entry-form" onSubmit={handleSubmit} className="space-y-5">
-            {/* Amount */}
-            <div className="text-center">
-              <span aria-hidden="true" className="text-gray-500 text-2xl absolute mt-3 ml-4">
-                ₹
-              </span>
-              <label htmlFor="entry-amount" className="sr-only">Amount in rupees</label>
-              <input
-                id="entry-amount"
-                type="number"
-                inputMode="decimal"
-                step="0.01"
-                value={amount}
-                onChange={(e) => setAmount(e.target.value)}
-                className="w-full text-5xl font-bold text-center py-4 bg-gray-50 dark:bg-zinc-800/50 rounded-2xl outline-none focus:ring-2 focus:ring-indigo-500 transition-all text-gray-900 dark:text-white"
-                placeholder="0"
-                autoFocus
-                required
-              />
-            </div>
-
-            {/* Quick Chips (only when adding new) */}
-            {!editEntry && (
-              <div className="flex justify-center gap-2">
-                {[100, 500, 1000].map((val) => (
-                  <button
-                    type="button"
-                    key={val}
-                    onClick={() =>
-                      setAmount(
-                        String((parseFloat(amount || 0) + val).toFixed(0)),
-                      )
-                    }
-                    className="px-3 py-1 bg-gray-100 dark:bg-zinc-800 text-gray-600 dark:text-zinc-300 text-xs font-semibold rounded-full hover:bg-gray-200 dark:hover:bg-zinc-700"
-                  >
-                    +₹{val}
-                  </button>
-                ))}
-              </div>
-            )}
-
-            {/* Category Picker */}
-            <div role="group" aria-labelledby="entry-category-label">
-              <p id="entry-category-label" className="text-xs font-bold text-gray-500 dark:text-zinc-400 uppercase tracking-wider mb-2 block">
-                Category
-              </p>
-              {!showNewHead ? (
-                <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide">
-                  {filteredHeads.map((h) => (
-                    <button
-                      type="button"
-                      key={h._id}
-                      onClick={() => setHeadId(h._id)}
-                      aria-pressed={headId === h._id}
-                      className={`flex-shrink-0 px-4 py-2 rounded-xl text-sm font-semibold border-2 transition-all ${
-                        headId === h._id
-                          ? "border-indigo-500 bg-indigo-50 dark:bg-indigo-950/40 text-indigo-700 dark:text-indigo-300"
-                          : "border-gray-100 dark:border-zinc-800 bg-white dark:bg-zinc-800 text-gray-600 dark:text-zinc-300"
-                      }`}
-                    >
-                      {h.emoji} {h.name}
-                    </button>
-                  ))}
-                  <button
-                    type="button"
-                    onClick={() => setShowNewHead(true)}
-                    className="flex-shrink-0 px-4 py-2 rounded-xl text-sm font-semibold border-2 border-dashed border-gray-200 dark:border-zinc-700 text-gray-500 dark:text-zinc-400 flex items-center gap-1"
-                  >
-                    <Plus className="w-4 h-4" /> New
-                  </button>
-                </div>
-              ) : (
-                <div className="flex gap-2">
-                  <input
-                    type="text"
-                    aria-label="New category name"
-                    value={newHeadName}
-                    onChange={(e) => setNewHeadName(e.target.value)}
-                    placeholder="Category Name"
-                    className="input flex-1"
-                    autoFocus
-                  />
-                  <button
-                    type="button"
-                    onClick={handleCreateHead}
-                    className="btn-primary"
-                  >
-                    Add
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setShowNewHead(false)}
-                    aria-label="Cancel new category"
-                    className="btn-secondary px-3"
-                  >
-                    <X className="w-4 h-4" aria-hidden="true" />
-                  </button>
-                </div>
-              )}
-            </div>
-
-            {/* Mode & Date */}
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <p id="entry-payment-mode-label" className="text-xs font-bold text-gray-500 dark:text-zinc-400 uppercase tracking-wider mb-2 block">
-                  Payment Mode
-                </p>
-                <div role="group" aria-labelledby="entry-payment-mode-label" className="flex bg-gray-100 dark:bg-zinc-800 p-1 rounded-xl">
-                  <button
-                    type="button"
-                    onClick={() => setMode("cash")}
-                    aria-pressed={mode === "cash"}
-                    className={`flex-1 py-1.5 rounded-lg text-xs font-bold transition ${
-                      mode === "cash"
-                        ? "bg-amber-400 text-gray-900 shadow"
-                        : "text-gray-500 dark:text-zinc-400"
-                    }`}
-                  >
-                    CASH
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setMode("online")}
-                    aria-pressed={mode === "online"}
-                    className={`flex-1 py-1.5 rounded-lg text-xs font-bold transition ${
-                      mode === "online"
-                        ? "bg-blue-700 text-white shadow"
-                        : "text-gray-500 dark:text-zinc-400"
-                    }`}
-                  >
-                    ONLINE
-                  </button>
-                </div>
-              </div>
-
-              <div>
-                <label htmlFor="entry-date" className="text-xs font-bold text-gray-500 dark:text-zinc-400 uppercase tracking-wider mb-2 block">
-                  Date
-                </label>
-                <input
-                  type="date"
-                  id="entry-date"
-                  value={date}
-                  onChange={(e) => setDate(e.target.value)}
-                  className="input w-full"
-                  required
-                />
-              </div>
-            </div>
-
-            {/* Note */}
-            <div>
-              <label htmlFor="entry-note" className="text-xs font-bold text-gray-500 dark:text-zinc-400 uppercase tracking-wider mb-2 block">
-                Note (Optional)
-              </label>
-              <input
-                type="text"
-                id="entry-note"
-                value={summary}
-                onChange={(e) => setSummary(e.target.value)}
-                placeholder="What was this for?"
-                className="input"
-                maxLength={200}
-              />
-            </div>
-          </form>
-        </div>
-
-        <div className="p-5 border-t border-gray-100 dark:border-zinc-800 bg-gray-50 dark:bg-zinc-950/50 rounded-b-3xl">
+    <Sheet
+      open={isOpen}
+      onClose={onClose}
+      title={editEntry ? "Edit entry" : "New entry"}
+      description={
+        selectedAccount?.name
+          ? `Recording in ${selectedAccount.name}`
+          : undefined
+      }
+      footer={
+        <div className="space-y-2">
+          {error && (
+            <p role="alert" className="text-xs font-semibold text-rose-600 dark:text-rose-400">
+              {error}
+            </p>
+          )}
           <button
             form="entry-form"
             type="submit"
             disabled={loading}
-            className="w-full btn-primary py-3.5 text-base shadow-lg shadow-indigo-200 dark:shadow-none"
+            className={cn(
+              "w-full rounded-xl py-3 text-sm font-bold text-white shadow-sm transition active:scale-[0.99] disabled:opacity-60",
+              isIncome
+                ? "bg-emerald-600 hover:bg-emerald-700"
+                : "bg-rose-600 hover:bg-rose-700",
+            )}
           >
             {loading
-              ? "Saving..."
+              ? "Saving…"
               : editEntry
-                ? "Update Entry"
-                : `Save ${type === "income" ? "Income" : "Expense"}`}
+                ? "Update entry"
+                : `Save ${isIncome ? "income" : "expense"}`}
           </button>
         </div>
-      </motion.div>
-    </div>
+      }
+    >
+      <form id="entry-form" onSubmit={handleSubmit} className="space-y-5 pb-1">
+        <Segmented
+          ariaLabel="Entry type"
+          value={type}
+          onChange={changeType}
+          options={TYPE_OPTIONS}
+          itemClassName={cn(
+            type === "income" && "aria-[pressed=true]:text-emerald-700",
+            type === "expense" && "aria-[pressed=true]:text-rose-700",
+          )}
+        />
+
+        <div>
+          <label htmlFor="entry-amount" className="label">
+            Amount (₹)
+          </label>
+          <div className="relative">
+            <span
+              aria-hidden="true"
+              className={cn(
+                "pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-2xl font-semibold",
+                accent,
+              )}
+            >
+              ₹
+            </span>
+            <input
+              id="entry-amount"
+              type="number"
+              inputMode="decimal"
+              step="0.01"
+              min="0"
+              value={amount}
+              onChange={(event) => {
+                setAmount(event.target.value);
+                setError("");
+              }}
+              className={cn(
+                "money h-16 w-full rounded-2xl border border-slate-200 bg-slate-50 pl-11 pr-4 text-3xl font-bold text-slate-900 outline-none transition",
+                "placeholder:text-slate-300 focus:border-indigo-500 focus:bg-white focus:ring-2 focus:ring-indigo-500/20",
+                "dark:border-zinc-700 dark:bg-zinc-800/60 dark:text-white dark:placeholder:text-zinc-600 dark:focus:bg-zinc-800",
+              )}
+              placeholder="0"
+              autoFocus
+            />
+          </div>
+          {!editEntry && (
+            <div className="mt-2 flex flex-wrap gap-1.5">
+              {QUICK_AMOUNTS.map((value) => (
+                <button
+                  key={value}
+                  type="button"
+                  onClick={() =>
+                    setAmount(
+                      String(
+                        Number((parseFloat(amount || 0) + value).toFixed(2)),
+                      ),
+                    )
+                  }
+                  className="rounded-full bg-slate-100 px-2.5 py-1 text-[11px] font-semibold text-slate-600 transition hover:bg-slate-200 dark:bg-zinc-800 dark:text-zinc-300 dark:hover:bg-zinc-700"
+                >
+                  +₹{value.toLocaleString("en-IN")}
+                </button>
+              ))}
+              {amount && (
+                <button
+                  type="button"
+                  onClick={() => setAmount("")}
+                  className="rounded-full px-2.5 py-1 text-[11px] font-semibold text-slate-500 transition hover:text-rose-600 dark:text-zinc-400"
+                >
+                  Clear
+                </button>
+              )}
+            </div>
+          )}
+        </div>
+
+        <div>
+          <div className="mb-1.5 flex items-center justify-between">
+            <span className="label mb-0">Category</span>
+            {!showNewHead && (
+              <button
+                type="button"
+                onClick={() => setShowNewHead(true)}
+                className="flex items-center gap-1 text-[11px] font-bold text-indigo-600 hover:underline dark:text-indigo-400"
+              >
+                <Plus className="h-3.5 w-3.5" aria-hidden="true" />
+                New
+              </button>
+            )}
+          </div>
+
+          {showNewHead ? (
+            <div className="flex gap-2">
+              <input
+                type="text"
+                aria-label="New category name"
+                value={newHeadName}
+                onChange={(event) => setNewHeadName(event.target.value)}
+                placeholder="e.g. Groceries"
+                className="input flex-1"
+                autoFocus
+                maxLength={40}
+              />
+              <button
+                type="button"
+                onClick={handleCreateHead}
+                className="btn-primary btn-sm px-3"
+                aria-label="Create category"
+              >
+                <Check className="h-4 w-4" aria-hidden="true" />
+              </button>
+              <button
+                type="button"
+                onClick={() => setShowNewHead(false)}
+                aria-label="Cancel new category"
+                className="btn-secondary btn-sm px-3"
+              >
+                <X className="h-4 w-4" aria-hidden="true" />
+              </button>
+            </div>
+          ) : filteredHeads.length === 0 ? (
+            <div className="flex items-center gap-2 rounded-xl border border-dashed border-slate-300 p-3 text-xs text-slate-500 dark:border-zinc-700 dark:text-zinc-400">
+              <Tag className="h-4 w-4" aria-hidden="true" />
+              No {type} categories yet — create your first one.
+            </div>
+          ) : (
+            <div className="flex flex-wrap gap-1.5" role="group" aria-label="Category">
+              {filteredHeads.map((head) => {
+                const isActive = headId === head._id;
+                return (
+                  <button
+                    key={head._id}
+                    type="button"
+                    onClick={() => {
+                      setHeadId(head._id);
+                      setError("");
+                    }}
+                    aria-pressed={isActive}
+                    className={cn(
+                      "flex items-center gap-1.5 rounded-xl border px-3 py-2 text-xs font-semibold transition",
+                      isActive
+                        ? "border-indigo-600 bg-indigo-600 text-white shadow-sm"
+                        : "border-slate-200 bg-white text-slate-700 hover:border-slate-300 hover:bg-slate-50 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-200 dark:hover:bg-zinc-800",
+                    )}
+                  >
+                    {head.emoji ? (
+                      <span aria-hidden="true">{head.emoji}</span>
+                    ) : (
+                      <span
+                        aria-hidden="true"
+                        className={cn(
+                          "h-2 w-2 rounded-full",
+                          isActive && "bg-white/90",
+                        )}
+                        style={
+                          isActive ? undefined : { backgroundColor: head.color }
+                        }
+                      />
+                    )}
+                    {head.name}
+                  </button>
+                );
+              })}
+            </div>
+          )}
+        </div>
+
+        <div className="grid grid-cols-2 gap-3">
+          <div>
+            <span className="label">Payment mode</span>
+            <Segmented
+              ariaLabel="Payment mode"
+              value={mode}
+              onChange={setMode}
+              options={MODE_OPTIONS}
+            />
+          </div>
+          <div>
+            <label htmlFor="entry-date" className="label">
+              Date
+            </label>
+            <input
+              type="date"
+              id="entry-date"
+              value={date}
+              onChange={(event) => setDate(event.target.value)}
+              className="input"
+              required
+            />
+          </div>
+        </div>
+
+        <div className="flex gap-1.5">
+          {[
+            { label: "Today", value: todayYMD() },
+            { label: "Yesterday", value: yesterdayYMD() },
+          ].map((option) => (
+            <button
+              key={option.label}
+              type="button"
+              onClick={() => setDate(option.value)}
+              aria-pressed={date === option.value}
+              className="chip min-h-[30px] py-1 text-[11px]"
+            >
+              {option.label}
+            </button>
+          ))}
+        </div>
+
+        <div>
+          <label htmlFor="entry-note" className="label">
+            Note <span className="font-normal normal-case tracking-normal text-slate-400">(optional)</span>
+          </label>
+          <input
+            type="text"
+            id="entry-note"
+            value={summary}
+            onChange={(event) => setSummary(event.target.value)}
+            placeholder="What was this for?"
+            className="input"
+            maxLength={200}
+          />
+        </div>
+
+        {editEntry && (
+          <p className="flex items-center gap-1.5 text-[11px] text-slate-400 dark:text-zinc-500">
+            <Trash2 className="h-3.5 w-3.5" aria-hidden="true" />
+            To remove this entry, use the delete action in Activity.
+          </p>
+        )}
+      </form>
+    </Sheet>
   );
 }

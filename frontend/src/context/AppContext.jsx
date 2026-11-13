@@ -15,46 +15,69 @@ export function AppProvider({ children }) {
   const [accounts, setAccounts] = useState([]);
   const [selectedAccount, setSelectedAccount] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState(null);
 
   const fetchAccounts = useCallback(async () => {
     const data = await API.get("/accounts");
     setAccounts(data);
     const saved = localStorage.getItem("selectedAccountId");
-    const found = data.find((a) => a._id === saved);
+    const found = data.find((account) => account._id === saved);
     if (found) setSelectedAccount(found);
     else if (data[0]) {
       setSelectedAccount(data[0]);
       localStorage.setItem("selectedAccountId", data[0]._id);
+    } else {
+      setSelectedAccount(null);
     }
+    return data;
   }, []);
 
-  useEffect(() => {
-    fetchAccounts()
-      .catch((error) => {
-        toast.error(error.message || "Unable to load accounts");
-      })
-      .finally(() => setLoading(false));
+  const load = useCallback(async () => {
+    setLoading(true);
+    try {
+      await fetchAccounts();
+      setLoadError(null);
+    } catch (error) {
+      setLoadError(error);
+    } finally {
+      setLoading(false);
+    }
   }, [fetchAccounts]);
 
-  const switchAccount = (acc) => {
-    setSelectedAccount(acc);
-    localStorage.setItem("selectedAccountId", acc._id);
+  useEffect(() => {
+    load();
+  }, [load]);
+
+  const switchAccount = (account) => {
+    setSelectedAccount(account);
+    localStorage.setItem("selectedAccountId", account._id);
   };
 
   const createAccount = async (name) => {
-    const acc = await API.post("/accounts", { name });
-    setAccounts((current) => [...current, acc]);
-    setSelectedAccount(acc);
-    localStorage.setItem("selectedAccountId", acc._id);
+    const account = await API.post("/accounts", { name });
+    setAccounts((current) => [...current, account]);
+    setSelectedAccount(account);
+    localStorage.setItem("selectedAccountId", account._id);
     toast.success("Account created");
-    return acc;
+    return account;
   };
 
   const renameAccount = async (id, name) => {
-    const acc = await API.put(`/accounts/${id}`, { name });
-    setAccounts((p) => p.map((a) => (a._id === id ? acc : a)));
-    if (selectedAccount?._id === id) setSelectedAccount(acc);
-    toast.success("Renamed");
+    const updated = await API.put(`/accounts/${id}`, { name });
+    setAccounts((previous) =>
+      previous.map((account) => (account._id === id ? updated : account)),
+    );
+    if (selectedAccount?._id === id) setSelectedAccount(updated);
+    toast.success("Account renamed");
+    return updated;
+  };
+
+  const refreshAccounts = async () => {
+    try {
+      await fetchAccounts();
+    } catch {
+      // Keep the current selection if a background refresh fails.
+    }
   };
 
   return (
@@ -65,7 +88,10 @@ export function AppProvider({ children }) {
         switchAccount,
         createAccount,
         renameAccount,
+        refreshAccounts,
         loading,
+        loadError,
+        reload: load,
       }}
     >
       {children}

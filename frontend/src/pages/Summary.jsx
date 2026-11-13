@@ -1,17 +1,60 @@
 import { useState } from "react";
+import { Link } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { format, subMonths, addMonths, isSameMonth } from "date-fns";
 import {
+  ArrowRight,
+  ArrowRightLeft,
   ChevronLeft,
   ChevronRight,
-  TrendingUp,
+  HandCoins,
+  Plus,
+  Receipt,
   TrendingDown,
-  Wallet,
+  TrendingUp,
 } from "lucide-react";
 import API from "../lib/api";
 import { formatPaise, cn } from "../lib/utils";
 import { useApp } from "../context/AppContext";
 import DeferredSummaryCharts from "../components/DeferredSummaryCharts";
+import EntryRow from "../components/EntryRow";
+import EmptyState from "../components/ui/EmptyState";
+import { SummarySkeleton } from "../components/ui/Skeleton";
+import { openAddEntry, openTransfer } from "../lib/quickActions";
+
+function Delta({ current, previous, goodWhenUp }) {
+  if (!previous) return null;
+  const percent = Math.round(((current - previous) / previous) * 100);
+  if (!Number.isFinite(percent) || percent === 0) {
+    return (
+      <span className="text-[11px] font-semibold text-slate-400 dark:text-zinc-500">
+        Same as last month
+      </span>
+    );
+  }
+  const isUp = percent > 0;
+  const isGood = goodWhenUp ? isUp : !isUp;
+  return (
+    <span
+      className={cn(
+        "inline-flex items-center gap-1 text-[11px] font-semibold",
+        isGood
+          ? "text-emerald-600 dark:text-emerald-400"
+          : "text-rose-600 dark:text-rose-400",
+      )}
+    >
+      {isUp ? (
+        <TrendingUp className="h-3 w-3" aria-hidden="true" />
+      ) : (
+        <TrendingDown className="h-3 w-3" aria-hidden="true" />
+      )}
+      {Math.abs(percent)}%
+      <span className="font-normal text-slate-400 dark:text-zinc-500">
+        vs last month
+      </span>
+    </span>
+  );
+}
 
 export default function Summary() {
   const { selectedAccount } = useApp();
@@ -20,18 +63,24 @@ export default function Summary() {
 
   const handlePrev = () => {
     setIsAllTime(false);
-    setDate((d) => subMonths(d, 1));
+    setDate((value) => subMonths(value, 1));
   };
   const handleNext = () => {
     setIsAllTime(false);
-    setDate((d) => addMonths(d, 1));
+    setDate((value) => addMonths(value, 1));
   };
-  const handleAllTime = () => setIsAllTime(true);
 
   const queryMonth = isAllTime ? "all" : date.getMonth() + 1;
   const queryYear = isAllTime ? "all" : date.getFullYear();
 
-  const { data, isLoading, isError, error } = useQuery({
+  const {
+    data,
+    isLoading,
+    isError,
+    error,
+    refetch,
+    isFetching,
+  } = useQuery({
     queryKey: ["summary", selectedAccount?._id, queryMonth, queryYear],
     queryFn: () =>
       API.get(
@@ -40,18 +89,29 @@ export default function Summary() {
     enabled: !!selectedAccount?._id,
   });
 
-  if (isLoading) {
-    return (
-      <div className="flex justify-center p-10">
-        <div className="animate-spin w-8 h-8 border-4 border-indigo-600 border-t-transparent rounded-full" />
-      </div>
-    );
-  }
+  const { data: recent, isLoading: recentLoading } = useQuery({
+    queryKey: ["entries", selectedAccount?._id, "recent"],
+    queryFn: () => API.get(`/entries?account=${selectedAccount._id}&limit=5`),
+    enabled: !!selectedAccount?._id,
+  });
+
+  if (isLoading) return <SummarySkeleton />;
 
   if (isError) {
     return (
-      <div className="card p-6 text-center text-red-600">
-        Failed to load summary: {error?.message || "Unknown error"}
+      <div className="card card-body text-center">
+        <p className="text-sm font-semibold text-slate-900 dark:text-white">
+          We couldn’t load your summary
+        </p>
+        <p className="mt-1 text-sm text-slate-500 dark:text-zinc-400">
+          {error?.message || "Something went wrong."}
+        </p>
+        <button
+          onClick={() => refetch()}
+          className="btn-primary btn-sm mx-auto mt-4"
+        >
+          Try again
+        </button>
       </div>
     );
   }
@@ -66,8 +126,10 @@ export default function Summary() {
     expensePaise: 0,
     netPaise: 0,
   };
-  const prevTotals = data?.prevTotals || { incomePaise: 0, expensePaise: 0 };
-  const incomeByHead = data?.incomeByHead || [];
+  const prevTotals = data?.prevTotals || {
+    incomePaise: 0,
+    expensePaise: 0,
+  };
   const expenseByHead = data?.expenseByHead || [];
   const monthlyTrend = data?.monthlyTrend || [];
   const loans = data?.loans || {
@@ -76,185 +138,360 @@ export default function Summary() {
     pendingCount: 0,
   };
 
-  const incDiff = monthTotals.incomePaise - prevTotals.incomePaise;
-  const expDiff = monthTotals.expensePaise - prevTotals.expensePaise;
+  const spendingRatio =
+    monthTotals.incomePaise > 0
+      ? Math.min(
+          Math.round((monthTotals.expensePaise / monthTotals.incomePaise) * 100),
+          100,
+        )
+      : 0;
+  const periodLabel = isAllTime
+    ? "All time"
+    : format(date, "MMMM yyyy");
+  const recentItems = recent?.items || [];
+  const hasAnyData =
+    recentItems.length > 0 ||
+    allTime.totalPaise !== 0 ||
+    monthTotals.incomePaise > 0 ||
+    monthTotals.expensePaise > 0;
 
   return (
-    <div className="space-y-6 animate-fade-in pb-10">
-      {/* HEADER: Stepper */}
-      <div className="card flex items-center justify-between p-2">
+    <div className="animate-fade-in space-y-5 pb-4 sm:space-y-6">
+      <div className="flex flex-wrap items-end justify-between gap-3">
+        <div>
+          <p className="section-label">Overview</p>
+          <h1 className="page-title mt-1">Your money, at a glance</h1>
+        </div>
+        <div className="flex items-center gap-2">
+          <button onClick={openAddEntry} className="btn-primary btn-sm">
+            <Plus className="h-4 w-4" aria-hidden="true" />
+            Add entry
+          </button>
+          <button
+            onClick={openTransfer}
+            className="btn-secondary btn-sm"
+            aria-label="Transfer money"
+          >
+            <ArrowRightLeft className="h-4 w-4" aria-hidden="true" />
+            <span className="hidden sm:inline">Transfer</span>
+          </button>
+        </div>
+      </div>
+
+      {/* Period selector */}
+      <div className="card flex items-center gap-2 p-1.5">
         <button
           onClick={handlePrev}
           aria-label="Previous month"
-          className="p-2 hover:bg-gray-100 dark:hover:bg-neutral-800 rounded-xl transition"
+          className="icon-btn"
         >
-          <ChevronLeft aria-hidden="true" className="w-5 h-5 text-gray-600 dark:text-gray-300" />
+          <ChevronLeft className="h-5 w-5" aria-hidden="true" />
         </button>
-        <div className="flex items-center gap-2">
-          <span className="font-bold text-gray-800 dark:text-gray-100">
-            {isAllTime ? "All Time" : format(date, "MMMM yyyy")}
-          </span>
-          {!isAllTime && (
-            <button
-              onClick={handleAllTime}
-              className="text-[10px] bg-gray-100 dark:bg-neutral-800 px-2 py-1 rounded-md font-bold text-gray-500 hover:bg-gray-200 dark:hover:bg-neutral-700 transition-colors"
-            >
-              ALL TIME
-            </button>
-          )}
+        <div className="min-w-0 flex-1 text-center">
+          <p className="truncate text-sm font-bold text-slate-900 dark:text-white">
+            {periodLabel}
+          </p>
+          <p className="text-[11px] text-slate-500 dark:text-zinc-400">
+            {isAllTime
+              ? "Every transaction to date"
+              : isFetching
+                ? "Refreshing…"
+                : "Income, spending and balance"}
+          </p>
         </div>
+        {!isAllTime && !isSameMonth(date, new Date()) && (
+          <button
+            onClick={() => setDate(new Date())}
+            className="text-[11px] font-bold text-indigo-600 hover:underline dark:text-indigo-400"
+          >
+            This month
+          </button>
+        )}
+        <button
+          onClick={() => setIsAllTime((value) => !value)}
+          aria-pressed={isAllTime}
+          className="chip min-h-[32px] py-1 text-[11px]"
+        >
+          All time
+        </button>
         <button
           onClick={handleNext}
           aria-label="Next month"
           disabled={isSameMonth(date, new Date()) && !isAllTime}
-          className="p-2 hover:bg-gray-100 dark:hover:bg-neutral-800 rounded-xl transition disabled:opacity-30"
+          className="icon-btn"
         >
-          <ChevronRight aria-hidden="true" className="w-5 h-5 text-gray-600 dark:text-gray-300" />
+          <ChevronRight className="h-5 w-5" aria-hidden="true" />
         </button>
       </div>
 
-      {/* HERO: All Time Balance */}
-      <div className="card p-5 sm:p-6 bg-gradient-to-br from-indigo-900 to-indigo-700 text-white shadow-lg shadow-indigo-200 dark:shadow-none border-none relative overflow-hidden">
-        <div className="absolute top-0 right-0 p-4 opacity-10">
-          <Wallet className="w-40 h-40 transform translate-x-4 -translate-y-4" />
-        </div>
+      {/* Balance hero */}
+      <section
+        aria-labelledby="balance-heading"
+        className="relative isolate overflow-hidden rounded-3xl bg-gradient-to-br from-indigo-600 via-indigo-700 to-violet-800 p-5 text-white shadow-xl shadow-indigo-600/20 sm:p-7"
+      >
+        <div
+          aria-hidden="true"
+          className="pointer-events-none absolute -right-16 -top-20 h-64 w-64 rounded-full border border-white/10"
+        />
+        <div
+          aria-hidden="true"
+          className="pointer-events-none absolute -bottom-24 -left-10 h-64 w-64 rounded-full bg-white/5 blur-2xl"
+        />
+        <div className="relative">
+          <div className="flex items-start justify-between gap-4">
+            <p
+              id="balance-heading"
+              className="text-[11px] font-semibold uppercase tracking-[0.16em] text-indigo-200"
+            >
+              Total balance
+            </p>
+            <span className="rounded-full bg-white/10 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wider text-indigo-100 ring-1 ring-inset ring-white/15">
+              {selectedAccount?.name}
+            </span>
+          </div>
 
-        <div className="relative z-10">
-          <p className="text-indigo-200 text-sm font-semibold uppercase tracking-wider mb-1">
-            Total Balance
-          </p>
-          <h2 className="text-4xl sm:text-5xl font-extrabold mb-6 tracking-tight">
+          <p className="money mt-2 text-[2.1rem] font-bold leading-none tracking-tight sm:text-5xl">
             {formatPaise(allTime.totalPaise)}
-          </h2>
+          </p>
 
-          <div className="grid grid-cols-2 gap-3 sm:gap-4">
-            <div className="bg-white/10 backdrop-blur-md rounded-xl p-3 sm:p-4 border border-white/20 shadow-sm">
-              <p className="text-xs text-indigo-200 uppercase font-bold tracking-widest mb-1 flex items-center gap-1.5">
-                <span className="w-2 h-2 rounded-full bg-amber-400" /> Cash
+          <p className="mt-2 text-xs text-indigo-200">
+            {monthTotals.netPaise >= 0 ? "Up" : "Down"}{" "}
+            <span className="font-semibold text-white">
+              {formatPaise(Math.abs(monthTotals.netPaise))}
+            </span>{" "}
+            {isAllTime ? "overall" : `in ${format(date, "MMMM")}`}
+          </p>
+
+          <div className="mt-5 grid grid-cols-2 gap-2.5 sm:gap-3">
+            <div className="rounded-2xl bg-white/10 p-3 ring-1 ring-inset ring-white/15 backdrop-blur-sm sm:p-4">
+              <p className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-widest text-indigo-100">
+                <span className="h-1.5 w-1.5 rounded-full bg-amber-300" />
+                Cash
               </p>
-              <p className="text-xl sm:text-2xl font-bold text-white tracking-tight">
+              <p className="money mt-1 text-lg font-bold sm:text-2xl">
                 {formatPaise(allTime.cashPaise)}
               </p>
             </div>
-            <div className="bg-white/10 backdrop-blur-md rounded-xl p-3 sm:p-4 border border-white/20 shadow-sm">
-              <p className="text-xs text-indigo-200 uppercase font-bold tracking-widest mb-1 flex items-center gap-1.5">
-                <span className="w-2 h-2 rounded-full bg-blue-400" /> Online
+            <div className="rounded-2xl bg-white/10 p-3 ring-1 ring-inset ring-white/15 backdrop-blur-sm sm:p-4">
+              <p className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-widest text-indigo-100">
+                <span className="h-1.5 w-1.5 rounded-full bg-sky-300" />
+                Online
               </p>
-              <p className="text-xl sm:text-2xl font-bold text-white tracking-tight">
+              <p className="money mt-1 text-lg font-bold sm:text-2xl">
                 {formatPaise(allTime.onlinePaise)}
               </p>
             </div>
           </div>
         </div>
-      </div>
+      </section>
 
-      {/* STAT CARDS */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        {/* Income */}
-        <div className="card p-4 flex flex-col justify-between">
-          <div className="flex justify-between items-start mb-2">
-            <p className="text-xs font-bold text-gray-500 dark:text-zinc-400 uppercase tracking-wider">
-              Income
-            </p>
-            {!isAllTime && (
-              <span
-                className={cn(
-                  "text-[10px] font-bold px-1.5 py-0.5 rounded-md flex items-center gap-0.5",
-                  incDiff >= 0
-                    ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300"
-                    : "bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300",
-                )}
-              >
-                {incDiff >= 0 ? (
-                  <TrendingUp className="w-3 h-3" />
-                ) : (
-                  <TrendingDown className="w-3 h-3" />
-                )}
-                {formatPaise(Math.abs(incDiff))}
-              </span>
-            )}
-          </div>
-          <h3 className="text-xl font-bold text-emerald-600 dark:text-emerald-400 mt-auto">
-            {formatPaise(monthTotals.incomePaise)}
-          </h3>
+      {!hasAnyData ? (
+        <div className="card">
+          <EmptyState
+            icon={Receipt}
+            title="No entries yet"
+            description="Add your first income or expense to see balances, trends and category breakdowns here."
+            action={
+              <button onClick={openAddEntry} className="btn-primary">
+                <Plus className="h-4 w-4" aria-hidden="true" />
+                Add your first entry
+              </button>
+            }
+          />
         </div>
-
-        {/* Expense */}
-        <div className="card p-4 flex flex-col justify-between">
-          <div className="flex justify-between items-start mb-2">
-            <p className="text-xs font-bold text-gray-500 dark:text-zinc-400 uppercase tracking-wider">
-              Expense
-            </p>
-            {!isAllTime && (
-              <span
-                className={cn(
-                  "text-[10px] font-bold px-1.5 py-0.5 rounded-md flex items-center gap-0.5",
-                  expDiff <= 0
-                    ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300"
-                    : "bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300",
-                )}
-              >
-                {expDiff <= 0 ? (
-                  <TrendingDown className="w-3 h-3" />
-                ) : (
-                  <TrendingUp className="w-3 h-3" />
-                )}
-                {formatPaise(Math.abs(expDiff))}
-              </span>
-            )}
-          </div>
-          <h3 className="text-xl font-bold text-red-600 dark:text-red-400 mt-auto">
-            {formatPaise(monthTotals.expensePaise)}
-          </h3>
-        </div>
-
-        {/* Net wallet (same as Total Balance for the period math) */}
-        <div className="card p-4 bg-gray-50 dark:bg-zinc-800/40 flex flex-col justify-between">
-          <p className="text-xs font-bold text-gray-500 dark:text-zinc-400 uppercase tracking-wider mb-2">
-            Net Balance
-          </p>
-          <h3 className="text-xl font-bold text-gray-900 dark:text-white mt-auto">
-            {formatPaise(monthTotals.netPaise)}
-          </h3>
-          <p className="text-[10px] text-gray-500 dark:text-zinc-400 mt-1">
-            Income − Expense
-          </p>
-        </div>
-
-        {/* Settlements — NOT part of wallet */}
-        <div className="card p-4 flex flex-col justify-between border-dashed border-2 border-indigo-200 dark:border-indigo-900/50 bg-indigo-50/40 dark:bg-indigo-950/20">
-          <div className="mb-2">
-            <p className="text-xs font-bold text-indigo-700 dark:text-indigo-300 uppercase tracking-wider">
-              Pending Outside Wallet
-            </p>
-            <p className="text-[10px] text-gray-500 dark:text-zinc-400 mt-0.5">
-              Not included in Cash / Online
-            </p>
-          </div>
-          <div className="flex justify-between items-end mt-auto gap-3">
-            <div>
-              <p className="text-[10px] font-bold text-gray-500 uppercase">
-                You get
+      ) : (
+        <>
+          {/* Month stats */}
+          <div className="grid grid-cols-2 gap-3 lg:grid-cols-3">
+            <div className="card card-body">
+              <p className="section-label flex items-center gap-1.5">
+                <TrendingUp
+                  className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400"
+                  aria-hidden="true"
+                />
+                Income
               </p>
-              <p className="text-base font-bold text-emerald-600 dark:text-emerald-400">
-                {formatPaise(loans.youWillGetPaise)}
+              <p className="money mt-2 text-xl font-bold text-emerald-600 dark:text-emerald-400 sm:text-2xl">
+                {formatPaise(monthTotals.incomePaise)}
+              </p>
+              <div className="mt-1.5">
+                {!isAllTime && (
+                  <Delta
+                    current={monthTotals.incomePaise}
+                    previous={prevTotals.incomePaise}
+                    goodWhenUp
+                  />
+                )}
+              </div>
+            </div>
+
+            <div className="card card-body">
+              <p className="section-label flex items-center gap-1.5">
+                <TrendingDown
+                  className="h-3.5 w-3.5 text-rose-600 dark:text-rose-400"
+                  aria-hidden="true"
+                />
+                Spent
+              </p>
+              <p className="money mt-2 text-xl font-bold text-rose-600 dark:text-rose-400 sm:text-2xl">
+                {formatPaise(monthTotals.expensePaise)}
+              </p>
+              <div className="mt-1.5">
+                {!isAllTime && (
+                  <Delta
+                    current={monthTotals.expensePaise}
+                    previous={prevTotals.expensePaise}
+                    goodWhenUp={false}
+                  />
+                )}
+              </div>
+            </div>
+
+            <div className="card card-body col-span-2 lg:col-span-1">
+              <div className="flex items-start justify-between gap-3">
+                <div>
+                  <p className="section-label">Net saved</p>
+                  <p
+                    className={cn(
+                      "money mt-2 text-xl font-bold sm:text-2xl",
+                      monthTotals.netPaise >= 0
+                        ? "text-slate-900 dark:text-white"
+                        : "text-rose-600 dark:text-rose-400",
+                    )}
+                  >
+                    {formatPaise(monthTotals.netPaise)}
+                  </p>
+                </div>
+                <span className="rounded-lg bg-slate-100 px-2 py-1 text-[11px] font-bold text-slate-600 dark:bg-zinc-800 dark:text-zinc-300">
+                  {spendingRatio}% spent
+                </span>
+              </div>
+              <div
+                className="mt-3 h-1.5 w-full overflow-hidden rounded-full bg-slate-100 dark:bg-zinc-800"
+                role="img"
+                aria-label={`${spendingRatio} percent of income spent`}
+              >
+                <div
+                  className={cn(
+                    "h-full rounded-full transition-all duration-500",
+                    spendingRatio > 90
+                      ? "bg-rose-500"
+                      : spendingRatio > 70
+                        ? "bg-amber-400"
+                        : "bg-emerald-500",
+                  )}
+                  style={{ width: `${Math.max(spendingRatio, 3)}%` }}
+                />
+              </div>
+              <p className="mt-1.5 text-[11px] text-slate-500 dark:text-zinc-400">
+                Income minus spending for {isAllTime ? "all time" : "this month"}
               </p>
             </div>
-            <div className="text-right">
-              <p className="text-[10px] font-bold text-gray-500 uppercase">
-                You owe
-              </p>
-              <p className="text-base font-bold text-red-600 dark:text-red-400">
-                {formatPaise(loans.youOwePaise)}
-              </p>
-            </div>
           </div>
-        </div>
-      </div>
-      <DeferredSummaryCharts
-        expenseByHead={expenseByHead}
-        monthlyTrend={monthlyTrend}
-      />
+
+          {/* Recent activity + loans */}
+          <div className="grid grid-cols-1 gap-5 lg:grid-cols-5">
+            <section className="card overflow-hidden lg:col-span-3">
+              <div className="card-head">
+                <h2 className="text-sm font-bold text-slate-900 dark:text-white">
+                  Recent activity
+                </h2>
+                <Link
+                  to="/entries"
+                  className="flex items-center gap-1 text-xs font-semibold text-indigo-600 hover:underline dark:text-indigo-400"
+                >
+                  View all
+                  <ArrowRight className="h-3.5 w-3.5" aria-hidden="true" />
+                </Link>
+              </div>
+              {recentLoading ? (
+                <div className="space-y-2 p-4" aria-hidden="true">
+                  {[0, 1, 2].map((row) => (
+                    <div key={row} className="flex items-center gap-3">
+                      <div className="skeleton h-8 w-8 rounded-xl" />
+                      <div className="flex-1 space-y-1.5">
+                        <div className="skeleton h-3 w-28" />
+                        <div className="skeleton h-2.5 w-16" />
+                      </div>
+                      <div className="skeleton h-3 w-14" />
+                    </div>
+                  ))}
+                </div>
+              ) : recentItems.length === 0 ? (
+                <p className="px-4 py-8 text-center text-sm text-slate-500 dark:text-zinc-400">
+                  Nothing recorded yet.
+                </p>
+              ) : (
+                <div className="divide-y divide-slate-100 dark:divide-zinc-800">
+                  {recentItems.map((entry) => (
+                    <EntryRow key={entry._id} entry={entry} compact />
+                  ))}
+                </div>
+              )}
+            </section>
+
+            <section className="card overflow-hidden lg:col-span-2">
+              <div className="card-head">
+                <h2 className="flex items-center gap-1.5 text-sm font-bold text-slate-900 dark:text-white">
+                  <HandCoins
+                    className="h-4 w-4 text-violet-500"
+                    aria-hidden="true"
+                  />
+                  Outside wallet
+                </h2>
+                <span className="badge bg-violet-50 text-violet-700 dark:bg-violet-950/40 dark:text-violet-300">
+                  {loans.pendingCount} pending
+                </span>
+              </div>
+              <div className="card-body space-y-3">
+                <div className="flex items-center justify-between gap-3 rounded-xl bg-emerald-50/60 px-3 py-2.5 dark:bg-emerald-950/20">
+                  <div>
+                    <p className="text-[11px] font-semibold uppercase tracking-wider text-emerald-700 dark:text-emerald-300">
+                      You’ll get back
+                    </p>
+                    <p className="money mt-0.5 text-lg font-bold text-emerald-700 dark:text-emerald-300">
+                      {formatPaise(loans.youWillGetPaise)}
+                    </p>
+                  </div>
+                  <TrendingUp
+                    className="h-5 w-5 text-emerald-500"
+                    aria-hidden="true"
+                  />
+                </div>
+                <div className="flex items-center justify-between gap-3 rounded-xl bg-rose-50/60 px-3 py-2.5 dark:bg-rose-950/20">
+                  <div>
+                    <p className="text-[11px] font-semibold uppercase tracking-wider text-rose-700 dark:text-rose-300">
+                      You owe
+                    </p>
+                    <p className="money mt-0.5 text-lg font-bold text-rose-700 dark:text-rose-300">
+                      {formatPaise(loans.youOwePaise)}
+                    </p>
+                  </div>
+                  <TrendingDown
+                    className="h-5 w-5 text-rose-500"
+                    aria-hidden="true"
+                  />
+                </div>
+                <Link
+                  to="/loans"
+                  className="flex min-h-[40px] items-center justify-center gap-1.5 rounded-xl border border-slate-200 text-xs font-semibold text-slate-700 transition hover:bg-slate-50 dark:border-zinc-700 dark:text-zinc-200 dark:hover:bg-zinc-800"
+                >
+                  Manage loans
+                  <ArrowRight className="h-3.5 w-3.5" aria-hidden="true" />
+                </Link>
+                <p className="text-center text-[10px] text-slate-400 dark:text-zinc-500">
+                  Tracked separately from cash and online balances
+                </p>
+              </div>
+            </section>
+          </div>
+
+          <DeferredSummaryCharts
+            expenseByHead={expenseByHead}
+            monthlyTrend={monthlyTrend}
+          />
+        </>
+      )}
     </div>
   );
 }
