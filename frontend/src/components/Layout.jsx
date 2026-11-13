@@ -166,7 +166,6 @@ export default function Layout({ children }) {
         onClose={() => setNoteOpen(false)}
         note={note}
         onChange={setNote}
-        accountName={selectedAccount?.name}
       />
 
       {modalHostLoaded && (
